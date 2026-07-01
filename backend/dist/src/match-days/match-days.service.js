@@ -39,10 +39,7 @@ let MatchDaysService = MatchDaysService_1 = class MatchDaysService {
                 _count: { select: { performances: true, rosters: true } },
                 matches: {
                     include: { teamA: true, teamB: true },
-                    orderBy: [
-                        { scheduledAt: 'asc' },
-                        { id: 'asc' },
-                    ],
+                    orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
                 },
             },
             orderBy: { date: 'asc' },
@@ -62,10 +59,7 @@ let MatchDaysService = MatchDaysService_1 = class MatchDaysService {
                 },
                 matches: {
                     include: { teamA: true, teamB: true },
-                    orderBy: [
-                        { scheduledAt: 'asc' },
-                        { id: 'asc' },
-                    ],
+                    orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
                 },
             },
         });

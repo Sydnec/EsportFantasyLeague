@@ -155,7 +155,7 @@ let RostersService = class RostersService {
             orderBy: { matchDay: { date: 'desc' } },
         });
     }
-    async findById(rosterId) {
+    async findById(rosterId, userId) {
         const roster = await this.prisma.roster.findUnique({
             where: { id: rosterId },
             include: {
@@ -183,9 +183,25 @@ let RostersService = class RostersService {
         if (!roster) {
             throw new NotFoundException('Roster not found');
         }
+        const isMember = await this.prisma.leagueMember.findUnique({
+            where: {
+                userId_leagueId: { userId, leagueId: roster.leagueId },
+            },
+        });
+        if (!isMember) {
+            throw new ForbiddenException('You are not a member of this league');
+        }
         return roster;
     }
-    async findLeagueRostersForMatchDay(leagueId, matchDayId) {
+    async findLeagueRostersForMatchDay(leagueId, matchDayId, userId) {
+        const isMember = await this.prisma.leagueMember.findUnique({
+            where: {
+                userId_leagueId: { userId, leagueId },
+            },
+        });
+        if (!isMember) {
+            throw new ForbiddenException('You are not a member of this league');
+        }
         return this.prisma.roster.findMany({
             where: { leagueId, matchDayId },
             include: {

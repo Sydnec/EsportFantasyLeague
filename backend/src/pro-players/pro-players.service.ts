@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Game } from '@prisma/client';
 
-
 @Injectable()
 export class ProPlayersService {
   constructor(private prisma: PrismaService) {}
@@ -72,7 +71,6 @@ export class ProPlayersService {
     });
 
     const teamIdsArray = Array.from(teamIds);
-
 
     return this.prisma.proPlayer.findMany({
       where: {

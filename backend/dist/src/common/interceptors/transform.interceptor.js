@@ -8,9 +8,12 @@ import { Injectable, } from '@nestjs/common';
 import { map } from 'rxjs/operators';
 let TransformInterceptor = class TransformInterceptor {
     intercept(context, next) {
+        const response = context
+            .switchToHttp()
+            .getResponse();
         return next.handle().pipe(map((data) => ({
             data,
-            statusCode: context.switchToHttp().getResponse().statusCode,
+            statusCode: response.statusCode,
             timestamp: new Date().toISOString(),
         })));
     }

@@ -37,18 +37,20 @@ export class RostersController {
 
   @Get('league/:leagueId/match-day/:matchDayId')
   findByLeagueAndMatchDay(
+    @CurrentUser() user: JwtPayload,
     @Param('leagueId') leagueId: string,
     @Param('matchDayId') matchDayId: string,
   ) {
     return this.rostersService.findLeagueRostersForMatchDay(
       leagueId,
       matchDayId,
+      user.userId,
     );
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.rostersService.findById(id);
+  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.rostersService.findById(id, user.userId);
   }
 
   @Patch(':id')

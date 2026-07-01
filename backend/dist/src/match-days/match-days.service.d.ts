@@ -105,8 +105,8 @@ export declare class MatchDaysService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;

@@ -16,13 +16,17 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+RUN chown -R node:node /app
+
+COPY --chown=node:node package*.json ./
 RUN npm install --omit=dev
 
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+COPY --chown=node:node --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --chown=node:node --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --chown=node:node --from=builder /app/dist ./dist
+COPY --chown=node:node --from=builder /app/prisma ./prisma
+
+USER node
 
 EXPOSE 3000
 

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
+import { apiClient } from '../api/client';
 
 export function OAuthCallbackPage() {
   const navigate = useNavigate();
@@ -9,13 +10,19 @@ export function OAuthCallbackPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const accessToken = params.get('accessToken');
-    const refreshToken = params.get('refreshToken');
+    const code = params.get('code');
 
-    if (accessToken && refreshToken) {
-      login(accessToken, refreshToken)
-        .then(() => {
-          navigate('/');
+    if (code) {
+      apiClient.post('/auth/google/token', { code })
+        .then((res) => {
+          const { accessToken, refreshToken } = res.data.data;
+          login(accessToken, refreshToken)
+            .then(() => {
+              navigate('/');
+            })
+            .catch(() => {
+              navigate('/login');
+            });
         })
         .catch(() => {
           navigate('/login');

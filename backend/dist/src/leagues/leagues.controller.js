@@ -30,14 +30,14 @@ let LeaguesController = class LeaguesController {
     getUpcomingTournaments() {
         return this.leaguesService.getUpcomingTournaments();
     }
-    findOne(id) {
-        return this.leaguesService.findById(id);
+    findOne(user, id) {
+        return this.leaguesService.findById(id, user.userId);
     }
     join(user, dto) {
         return this.leaguesService.join(user.userId, dto.inviteCode);
     }
-    leaderboard(id) {
-        return this.leaguesService.getLeaderboard(id);
+    leaderboard(user, id) {
+        return this.leaguesService.getLeaderboard(id, user.userId);
     }
     remove(user, id) {
         return this.leaguesService.remove(user.userId, id);
@@ -66,9 +66,10 @@ __decorate([
 ], LeaguesController.prototype, "getUpcomingTournaments", null);
 __decorate([
     Get(':id'),
-    __param(0, Param('id')),
+    __param(0, CurrentUser()),
+    __param(1, Param('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], LeaguesController.prototype, "findOne", null);
 __decorate([
@@ -81,9 +82,10 @@ __decorate([
 ], LeaguesController.prototype, "join", null);
 __decorate([
     Get(':id/leaderboard'),
-    __param(0, Param('id')),
+    __param(0, CurrentUser()),
+    __param(1, Param('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], LeaguesController.prototype, "leaderboard", null);
 __decorate([

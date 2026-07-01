@@ -27,8 +27,8 @@ export declare class RostersService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;
@@ -66,8 +66,8 @@ export declare class RostersService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;
@@ -110,8 +110,8 @@ export declare class RostersService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
                 imageUrl: string | null;
             };
         } & {
@@ -131,7 +131,7 @@ export declare class RostersService {
         matchDayId: string;
         status: import("@prisma/client").$Enums.RosterStatus;
     })[]>;
-    findById(rosterId: string): Promise<{
+    findById(rosterId: string, userId: string): Promise<{
         user: {
             username: string;
             id: string;
@@ -163,8 +163,8 @@ export declare class RostersService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
                 imageUrl: string | null;
             };
         } & {
@@ -184,7 +184,7 @@ export declare class RostersService {
         matchDayId: string;
         status: import("@prisma/client").$Enums.RosterStatus;
     }>;
-    findLeagueRostersForMatchDay(leagueId: string, matchDayId: string): Promise<({
+    findLeagueRostersForMatchDay(leagueId: string, matchDayId: string, userId: string): Promise<({
         user: {
             username: string;
             id: string;
@@ -202,8 +202,8 @@ export declare class RostersService {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;

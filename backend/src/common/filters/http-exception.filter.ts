@@ -28,7 +28,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message:
         typeof message === 'string'
           ? message
-          : (message as any).message || message,
+          : (message as { message?: string }).message ||
+            JSON.stringify(message),
       timestamp: new Date().toISOString(),
     });
   }

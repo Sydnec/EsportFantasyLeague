@@ -91,7 +91,7 @@ export class LeaguesService {
     });
   }
 
-  async findById(leagueId: string) {
+  async findById(leagueId: string, userId: string) {
     const league = await this.prisma.league.findUnique({
       where: { id: leagueId },
       include: {
@@ -111,6 +111,11 @@ export class LeaguesService {
 
     if (!league) {
       throw new NotFoundException('League not found');
+    }
+
+    const isMember = league.members.some((m) => m.user.id === userId);
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this league');
     }
 
     return league;
@@ -144,10 +149,20 @@ export class LeaguesService {
       data: { userId, leagueId: league.id },
     });
 
-    return this.findById(league.id);
+    return this.findById(league.id, userId);
   }
 
-  async getLeaderboard(leagueId: string) {
+  async getLeaderboard(leagueId: string, userId: string) {
+    const isMember = await this.prisma.leagueMember.findUnique({
+      where: {
+        userId_leagueId: { userId, leagueId },
+      },
+    });
+
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this league');
+    }
+
     return this.prisma.leagueMember.findMany({
       where: { leagueId },
       select: {

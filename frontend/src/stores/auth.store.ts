@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { apiClient } from '../api/client';
+import axios from 'axios';
+import { apiClient, API_BASE_URL } from '../api/client';
 import { type User, type ApiResponse } from '../types';
 
 interface AuthState {
@@ -68,9 +69,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) return;
       try {
-        const { data } = await apiClient.post('/auth/refresh');
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        const res = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${refreshToken}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+        const tokens = res.data.data;
+        localStorage.setItem('accessToken', tokens.accessToken);
+        localStorage.setItem('refreshToken', tokens.refreshToken);
       } catch {
         // Refresh failed — the response interceptor will handle logout if needed
       }

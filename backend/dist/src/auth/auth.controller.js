@@ -14,8 +14,8 @@ import { Controller, Post, Body, UseGuards, Get, Req, Res, } from '@nestjs/commo
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { GoogleOauthGuard } from './guards/google-oauth.guard.js';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard.js';
 import { CurrentUser, } from '../common/decorators/current-user.decorator.js';
 let AuthController = class AuthController {
     authService;
@@ -29,14 +29,22 @@ let AuthController = class AuthController {
         return this.authService.login(dto);
     }
     refresh(user) {
-        return this.authService.refreshToken(user.userId);
+        return this.authService.refreshToken(user.userId, user.refreshToken);
+    }
+    async logout(user) {
+        await this.authService.logout(user.userId, user.refreshToken);
+        return { success: true, message: 'Logged out successfully' };
+    }
+    async exchangeCode(code) {
+        return this.authService.exchangeOAuthCode(code);
     }
     async googleAuth() {
     }
-    async googleAuthCallback(req, res) {
-        const tokens = this.authService.generateTokens(req.user.id, req.user.email);
+    googleAuthCallback(req, res) {
+        const user = req.user;
+        const code = this.authService.generateOAuthCode(user.id, user.email, user.role);
         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-        res.redirect(`${frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
+        return res.redirect(`${frontendUrl}/auth/callback?code=${code}`);
     }
 };
 __decorate([
@@ -55,12 +63,27 @@ __decorate([
 ], AuthController.prototype, "login", null);
 __decorate([
     Post('refresh'),
-    UseGuards(JwtAuthGuard),
+    UseGuards(JwtRefreshGuard),
     __param(0, CurrentUser()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "refresh", null);
+__decorate([
+    Post('logout'),
+    UseGuards(JwtRefreshGuard),
+    __param(0, CurrentUser()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "logout", null);
+__decorate([
+    Post('google/token'),
+    __param(0, Body('code')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "exchangeCode", null);
 __decorate([
     Get('google'),
     UseGuards(GoogleOauthGuard),
@@ -75,7 +98,7 @@ __decorate([
     __param(1, Res()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:returntype", void 0)
 ], AuthController.prototype, "googleAuthCallback", null);
 AuthController = __decorate([
     Controller('auth'),

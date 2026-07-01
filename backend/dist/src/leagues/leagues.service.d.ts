@@ -53,7 +53,7 @@ export declare class LeaguesService {
         createdById: string;
         onlyCreatorInvites: boolean;
     })[]>;
-    findById(leagueId: string): Promise<{
+    findById(leagueId: string, userId: string): Promise<{
         members: {
             user: {
                 username: string;
@@ -103,7 +103,7 @@ export declare class LeaguesService {
         createdById: string;
         onlyCreatorInvites: boolean;
     }>;
-    getLeaderboard(leagueId: string): Promise<{
+    getLeaderboard(leagueId: string, userId: string): Promise<{
         user: {
             username: string;
             id: string;

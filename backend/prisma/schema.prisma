@@ -16,12 +16,14 @@ model User {
   passwordHash  String?  @map("password_hash")
   googleId      String?  @unique @map("google_id")
   avatarUrl     String?  @map("avatar_url")
+  role          Role     @default(USER)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   leagueMemberships LeagueMember[]
   rosters           Roster[]
   auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
 
   @@map("users")
 }
@@ -239,4 +241,21 @@ model AuditLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
 }

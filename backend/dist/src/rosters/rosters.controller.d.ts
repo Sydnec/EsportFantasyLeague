@@ -24,8 +24,8 @@ export declare class RostersController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;
@@ -68,8 +68,8 @@ export declare class RostersController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
                 imageUrl: string | null;
             };
         } & {
@@ -89,7 +89,7 @@ export declare class RostersController {
         matchDayId: string;
         status: import("@prisma/client").$Enums.RosterStatus;
     })[]>;
-    findByLeagueAndMatchDay(leagueId: string, matchDayId: string): Promise<({
+    findByLeagueAndMatchDay(user: JwtPayload, leagueId: string, matchDayId: string): Promise<({
         user: {
             username: string;
             id: string;
@@ -107,8 +107,8 @@ export declare class RostersController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;
@@ -127,7 +127,7 @@ export declare class RostersController {
         matchDayId: string;
         status: import("@prisma/client").$Enums.RosterStatus;
     })[]>;
-    findOne(id: string): Promise<{
+    findOne(user: JwtPayload, id: string): Promise<{
         user: {
             username: string;
             id: string;
@@ -159,8 +159,8 @@ export declare class RostersController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
                 imageUrl: string | null;
             };
         } & {
@@ -199,8 +199,8 @@ export declare class RostersController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;

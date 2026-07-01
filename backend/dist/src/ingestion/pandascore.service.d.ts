@@ -33,6 +33,19 @@ export interface PandaScoreMatch {
     }>;
     results: PandaScoreResult[];
 }
+export interface PandaScoreGamePlayer {
+    player?: {
+        id?: number;
+    };
+    stats?: Record<string, any>;
+    win?: boolean;
+}
+export interface PandaScoreGameDetail {
+    players?: PandaScoreGamePlayer[];
+}
+export interface PandaScoreMatchDetail {
+    games?: PandaScoreGameDetail[];
+}
 export declare class PandaScoreService {
     private prisma;
     private readonly logger;
@@ -42,5 +55,7 @@ export declare class PandaScoreService {
     syncUpcomingMatches(game: Game): Promise<void>;
     hasActiveMatches(game: Game): Promise<boolean>;
     syncRunningMatches(game: Game): Promise<void>;
+    syncMatchPerformances(matchId: string, game: Game, matchDayId: string): Promise<void>;
     private upsertTeam;
+    private fetchPlayersForTeam;
 }

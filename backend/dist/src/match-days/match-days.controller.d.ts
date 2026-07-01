@@ -100,8 +100,8 @@ export declare class MatchDaysController {
                     acronym: string | null;
                 } | null;
                 id: string;
-                name: string;
                 role: string;
+                name: string;
             };
         } & {
             id: string;

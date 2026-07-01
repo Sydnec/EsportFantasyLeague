@@ -1,10 +1,13 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
 import { PandaScoreService } from './pandascore.service.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
-import { Game } from '@prisma/client';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
+import { Game, Role } from '@prisma/client';
 
 @Controller('ingestion')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 export class IngestionController {
   constructor(private pandascoreService: PandaScoreService) {}
 

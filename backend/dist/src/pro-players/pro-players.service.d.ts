@@ -19,12 +19,12 @@ export declare class ProPlayersService {
         } | null;
     } & {
         id: string;
+        role: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
-        role: string;
         imageUrl: string | null;
         isActive: boolean;
     })[]>;
@@ -55,12 +55,12 @@ export declare class ProPlayersService {
         })[];
     } & {
         id: string;
+        role: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
-        role: string;
         imageUrl: string | null;
         isActive: boolean;
     }>;
@@ -80,12 +80,12 @@ export declare class ProPlayersService {
         }[];
     } & {
         id: string;
+        role: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
-        role: string;
         imageUrl: string | null;
         isActive: boolean;
     })[]>;

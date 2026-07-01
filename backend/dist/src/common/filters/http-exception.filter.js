@@ -19,7 +19,8 @@ let AllExceptionsFilter = class AllExceptionsFilter {
             statusCode: status,
             message: typeof message === 'string'
                 ? message
-                : message.message || message,
+                : message.message ||
+                    JSON.stringify(message),
             timestamp: new Date().toISOString(),
         });
     }

@@ -55,7 +55,7 @@ export declare class LeaguesController {
         onlyCreatorInvites: boolean;
     })[]>;
     getUpcomingTournaments(): Promise<Record<string, string[]>>;
-    findOne(id: string): Promise<{
+    findOne(user: JwtPayload, id: string): Promise<{
         members: {
             user: {
                 username: string;
@@ -105,7 +105,7 @@ export declare class LeaguesController {
         createdById: string;
         onlyCreatorInvites: boolean;
     }>;
-    leaderboard(id: string): Promise<{
+    leaderboard(user: JwtPayload, id: string): Promise<{
         user: {
             username: string;
             id: string;

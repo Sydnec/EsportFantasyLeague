@@ -36,6 +36,20 @@ export interface PandaScoreMatch {
   results: PandaScoreResult[];
 }
 
+export interface PandaScoreGamePlayer {
+  player?: { id?: number };
+  stats?: Record<string, any>;
+  win?: boolean;
+}
+
+export interface PandaScoreGameDetail {
+  players?: PandaScoreGamePlayer[];
+}
+
+export interface PandaScoreMatchDetail {
+  games?: PandaScoreGameDetail[];
+}
+
 @Injectable()
 export class PandaScoreService {
   private readonly logger = new Logger(PandaScoreService.name);
@@ -213,7 +227,9 @@ export class PandaScoreService {
         },
       );
       const runningMatches = (runningRes.data as PandaScoreMatch[]) || [];
-      const runningMatchIds = new Set(runningMatches.map((m) => m.id.toString()));
+      const runningMatchIds = new Set(
+        runningMatches.map((m) => m.id.toString()),
+      );
 
       // 2. Find matches in DB that we expect to be running or recently started
       const now = new Date();
@@ -253,7 +269,9 @@ export class PandaScoreService {
             }
           } catch (e: unknown) {
             if (e instanceof Error) {
-              this.logger.warn(`Failed to fetch missing matches chunk for ${game}: ${e.message}`);
+              this.logger.warn(
+                `Failed to fetch missing matches chunk for ${game}: ${e.message}`,
+              );
             }
           }
         }
@@ -291,10 +309,15 @@ export class PandaScoreService {
           if (resB) teamBScore = resB.score;
         }
 
+        const wasFinished = dbMatch.status === 'finished';
+        const isFinished = matchData.status === 'finished';
+
         await this.prisma.match.update({
           where: { id: matchId },
           data: {
-            ...(matchData.begin_at && { scheduledAt: new Date(matchData.begin_at) }),
+            ...(matchData.begin_at && {
+              scheduledAt: new Date(matchData.begin_at),
+            }),
             status: matchData.status,
             teamAScore,
             teamBScore,
@@ -302,12 +325,19 @@ export class PandaScoreService {
             winnerId: matchData.winner_id
               ? matchData.winner_id.toString()
               : null,
-            ...(matchData.status === 'finished' && !dbMatch.finishedAt && {
-              finishedAt: matchData.end_at ? new Date(matchData.end_at) : new Date(),
-            }),
+            ...(matchData.status === 'finished' &&
+              !dbMatch.finishedAt && {
+                finishedAt: matchData.end_at
+                  ? new Date(matchData.end_at)
+                  : new Date(),
+              }),
           },
         });
         updatedCount++;
+
+        if (isFinished && !wasFinished) {
+          await this.syncMatchPerformances(matchId, game, dbMatch.matchDayId);
+        }
       }
 
       if (updatedCount > 0) {
@@ -317,6 +347,138 @@ export class PandaScoreService {
       if (error instanceof Error) {
         this.logger.warn(
           `Failed to sync running matches for ${game}: ${error.message}`,
+        );
+      }
+    }
+  }
+
+  async syncMatchPerformances(matchId: string, game: Game, matchDayId: string) {
+    const token = process.env.PANDASCORE_API_TOKEN;
+    if (!token) return;
+
+    try {
+      this.logger.log(`Fetching detailed match data for match ${matchId}...`);
+      const res = await axios.get(`${this.baseUrl}/matches/${matchId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const matchData = res.data as PandaScoreMatchDetail;
+      if (!matchData || !matchData.games || !Array.isArray(matchData.games))
+        return;
+
+      const playerStatsAccumulator = new Map<string, Record<string, any>>();
+
+      for (const gameData of matchData.games) {
+        if (!gameData.players || !Array.isArray(gameData.players)) continue;
+
+        for (const playerData of gameData.players) {
+          const proPlayerId = playerData.player?.id?.toString();
+          if (!proPlayerId) continue;
+
+          const exists = await this.prisma.proPlayer.findUnique({
+            where: { id: proPlayerId },
+          });
+          if (!exists) continue;
+
+          const stats = (playerData.stats || {}) as Record<string, unknown>;
+          const win = playerData.win === true || stats['win'] === true;
+
+          if (!playerStatsAccumulator.has(proPlayerId)) {
+            playerStatsAccumulator.set(proPlayerId, {
+              kills: 0,
+              deaths: 0,
+              assists: 0,
+              cs: 0,
+              visionScore: 0,
+              firstBlood: false,
+              pentakills: 0,
+              win: false,
+              // CS-specific
+              headshotKills: 0,
+              clutchRounds: 0,
+              mvpStars: 0,
+              bombPlants: 0,
+              bombDefusals: 0,
+              mapWin: false,
+              // Rocket League
+              goals: 0,
+              saves: 0,
+              shots: 0,
+              score: 0,
+              // Valorant
+              firstBloods: 0,
+              headshots: 0,
+              acs: 0,
+              gamesCount: 0,
+            });
+          }
+
+          const acc = playerStatsAccumulator.get(proPlayerId)!;
+          acc.gamesCount += 1;
+
+          // LoL
+          acc.kills += Number(stats['kills'] ?? 0);
+          acc.deaths += Number(stats['deaths'] ?? 0);
+          acc.assists += Number(stats['assists'] ?? 0);
+          acc.cs += Number(stats['cs'] ?? stats['minions_killed'] ?? 0);
+          acc.visionScore += Number(stats['vision_score'] ?? 0);
+          if (stats['first_blood'] === true || stats['first_blood'] === 1)
+            acc.firstBlood = true;
+          acc.pentakills += Number(stats['pentakills'] ?? 0);
+          if (win) acc.win = true;
+
+          // CS
+          acc.headshotKills += Number(
+            stats['headshot_kills'] ?? stats['headshots'] ?? 0,
+          );
+          acc.clutchRounds += Number(stats['clutch_rounds'] ?? 0);
+          acc.mvpStars += Number(stats['mvps'] ?? 0);
+          acc.bombPlants += Number(stats['bomb_plants'] ?? 0);
+          acc.bombDefusals += Number(stats['bomb_defusals'] ?? 0);
+          if (win) acc.mapWin = true;
+
+          // Rocket League
+          acc.goals += Number(stats['goals'] ?? 0);
+          acc.saves += Number(stats['saves'] ?? 0);
+          acc.shots += Number(stats['shots'] ?? 0);
+          acc.score += Number(stats['score'] ?? 0);
+
+          // Valorant
+          acc.firstBloods += Number(stats['first_bloods'] ?? 0);
+          acc.headshots += Number(stats['headshots'] ?? 0);
+          acc.acs += Number(stats['average_combat_score'] ?? stats['acs'] ?? 0);
+        }
+      }
+
+      for (const [proPlayerId, acc] of playerStatsAccumulator.entries()) {
+        if (acc.gamesCount > 0) {
+          acc.acs = Math.round((acc.acs / acc.gamesCount) * 100) / 100;
+        }
+
+        await this.prisma.dayPerformance.upsert({
+          where: {
+            matchDayId_proPlayerId: {
+              matchDayId,
+              proPlayerId,
+            },
+          },
+          update: {
+            rawStats: acc,
+          },
+          create: {
+            matchDayId,
+            proPlayerId,
+            rawStats: acc,
+          },
+        });
+      }
+      this.logger.log(
+        `Ingested performances for ${playerStatsAccumulator.size} players in match ${matchId}.`,
+      );
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        this.logger.error(
+          `Failed to sync match performances for match ${matchId}: ${e.message}`,
         );
       }
     }
@@ -342,45 +504,75 @@ export class PandaScoreService {
       },
     });
 
-    if (team.players.length === 0) {
-      this.logger.log(`Fetching players for team ${team.name} (${team.id})...`);
-      const token = process.env.PANDASCORE_API_TOKEN;
-      try {
-        const res = await axios.get(`${this.baseUrl}/teams/${team.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const responseData = res.data as { players?: PandaScorePlayer[] };
-        const playersData: PandaScorePlayer[] = responseData.players || [];
-        for (const playerData of playersData) {
-          const role = playerData.role || 'Player';
-          await this.prisma.proPlayer.upsert({
-            where: { id: playerData.id.toString() },
-            update: {
-              name: playerData.name,
-              role,
-              imageUrl: playerData.image_url,
-              isActive: playerData.active,
-            },
-            create: {
-              id: playerData.id.toString(),
-              teamId: team.id,
-              name: playerData.name,
-              game,
-              role,
-              imageUrl: playerData.image_url,
-              isActive: playerData.active,
-            },
-          });
-        }
-      } catch (e: unknown) {
+    const shouldFetchPlayers =
+      team.players.length === 0 ||
+      Date.now() - team.updatedAt.getTime() > 7 * 24 * 60 * 60 * 1000;
+
+    if (shouldFetchPlayers) {
+      this.logger.log(
+        `Scheduling players fetch for team ${team.name} (${team.id})...`,
+      );
+      this.fetchPlayersForTeam(team.id, game).catch((e: unknown) => {
         if (e instanceof Error) {
-          this.logger.warn(
-            `Failed to fetch players for team ${team.name}: ${e.message}`,
+          this.logger.error(
+            `Failed to fetch players background job for ${team.name}: ${e.message}`,
           );
         }
-      }
+      });
     }
 
     return team;
+  }
+
+  private async fetchPlayersForTeam(teamId: string, game: Game) {
+    const token = process.env.PANDASCORE_API_TOKEN;
+    if (!token) return;
+    try {
+      const res = await axios.get(`${this.baseUrl}/teams/${teamId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const responseData = res.data as {
+        name?: string;
+        players?: PandaScorePlayer[];
+      };
+      const playersData: PandaScorePlayer[] = responseData.players || [];
+
+      // Force update team updatedAt field
+      await this.prisma.team.update({
+        where: { id: teamId },
+        data: { updatedAt: new Date() },
+      });
+
+      for (const playerData of playersData) {
+        const role = playerData.role || 'Player';
+        await this.prisma.proPlayer.upsert({
+          where: { id: playerData.id.toString() },
+          update: {
+            name: playerData.name,
+            role,
+            imageUrl: playerData.image_url,
+            isActive: playerData.active,
+          },
+          create: {
+            id: playerData.id.toString(),
+            teamId,
+            name: playerData.name,
+            game,
+            role,
+            imageUrl: playerData.image_url,
+            isActive: playerData.active,
+          },
+        });
+      }
+      this.logger.log(
+        `Successfully fetched/updated players for team ${teamId}.`,
+      );
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        this.logger.warn(
+          `Failed to fetch players for team ID ${teamId}: ${e.message}`,
+        );
+      }
+    }
   }
 }

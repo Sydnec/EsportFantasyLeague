@@ -7,7 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength, IsUrl, } from 'class-validator';
 export class UpdateUserDto {
     username;
     avatarUrl;
@@ -21,7 +21,7 @@ __decorate([
 ], UpdateUserDto.prototype, "username", void 0);
 __decorate([
     IsOptional(),
-    IsString(),
+    IsUrl({ require_tld: false }),
     __metadata("design:type", String)
 ], UpdateUserDto.prototype, "avatarUrl", void 0);
 //# sourceMappingURL=update-user.dto.js.map

@@ -17,7 +17,7 @@ let JwtStrategy = class JwtStrategy extends PassportStrategy(Strategy) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'super-secret-key-change-in-production',
+            secretOrKey: process.env.JWT_ACCESS_SECRET,
         });
         this.prisma = prisma;
     }
@@ -28,7 +28,7 @@ let JwtStrategy = class JwtStrategy extends PassportStrategy(Strategy) {
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
-        return { userId: payload.userId, email: payload.email };
+        return { userId: payload.userId, email: payload.email, role: user.role };
     }
 };
 JwtStrategy = __decorate([

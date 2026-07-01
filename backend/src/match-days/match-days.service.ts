@@ -36,10 +36,7 @@ export class MatchDaysService {
         _count: { select: { performances: true, rosters: true } },
         matches: {
           include: { teamA: true, teamB: true },
-          orderBy: [
-            { scheduledAt: 'asc' },
-            { id: 'asc' },
-          ],
+          orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
         },
       },
       orderBy: { date: 'asc' },
@@ -60,10 +57,7 @@ export class MatchDaysService {
         },
         matches: {
           include: { teamA: true, teamB: true },
-          orderBy: [
-            { scheduledAt: 'asc' },
-            { id: 'asc' },
-          ],
+          orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
         },
       },
     });

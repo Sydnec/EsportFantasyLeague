@@ -37,8 +37,8 @@ export class LeaguesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.leaguesService.findById(id);
+  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.leaguesService.findById(id, user.userId);
   }
 
   @Post(':id/join')
@@ -47,8 +47,8 @@ export class LeaguesController {
   }
 
   @Get(':id/leaderboard')
-  leaderboard(@Param('id') id: string) {
-    return this.leaguesService.getLeaderboard(id);
+  leaderboard(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.leaguesService.getLeaderboard(id, user.userId);
   }
 
   @Delete(':id')

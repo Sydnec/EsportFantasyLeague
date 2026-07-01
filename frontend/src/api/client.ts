@@ -79,14 +79,15 @@ apiClient.interceptors.response.use(
         );
 
         // Store new tokens
-        localStorage.setItem('accessToken', data.accessToken);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        const tokens = data.data;
+        localStorage.setItem('accessToken', tokens.accessToken);
+        localStorage.setItem('refreshToken', tokens.refreshToken);
 
         // Process queued requests with new token
-        processQueue(null, data.accessToken);
+        processQueue(null, tokens.accessToken);
 
         // Retry original request with new access token
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed → log out

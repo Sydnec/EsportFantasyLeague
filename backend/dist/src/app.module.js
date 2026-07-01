@@ -6,6 +6,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -23,10 +24,12 @@ let AppModule = class AppModule {
 AppModule = __decorate([
     Module({
         imports: [
-            ThrottlerModule.forRoot([{
+            ThrottlerModule.forRoot([
+                {
                     ttl: 60000,
                     limit: 100,
-                }]),
+                },
+            ]),
             ScheduleModule.forRoot(),
             PrismaModule,
             AuditModule,
@@ -39,6 +42,7 @@ AppModule = __decorate([
             RostersModule,
             IngestionModule,
         ],
+        controllers: [AppController],
         providers: [
             {
                 provide: APP_GUARD,

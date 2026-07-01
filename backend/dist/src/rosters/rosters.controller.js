@@ -27,11 +27,11 @@ let RostersController = class RostersController {
     findAll(user, leagueId) {
         return this.rostersService.findUserRosters(user.userId, leagueId);
     }
-    findByLeagueAndMatchDay(leagueId, matchDayId) {
-        return this.rostersService.findLeagueRostersForMatchDay(leagueId, matchDayId);
+    findByLeagueAndMatchDay(user, leagueId, matchDayId) {
+        return this.rostersService.findLeagueRostersForMatchDay(leagueId, matchDayId, user.userId);
     }
-    findOne(id) {
-        return this.rostersService.findById(id);
+    findOne(user, id) {
+        return this.rostersService.findById(id, user.userId);
     }
     update(user, id, dto) {
         return this.rostersService.update(user.userId, id, dto);
@@ -55,17 +55,19 @@ __decorate([
 ], RostersController.prototype, "findAll", null);
 __decorate([
     Get('league/:leagueId/match-day/:matchDayId'),
-    __param(0, Param('leagueId')),
-    __param(1, Param('matchDayId')),
+    __param(0, CurrentUser()),
+    __param(1, Param('leagueId')),
+    __param(2, Param('matchDayId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], RostersController.prototype, "findByLeagueAndMatchDay", null);
 __decorate([
     Get(':id'),
-    __param(0, Param('id')),
+    __param(0, CurrentUser()),
+    __param(1, Param('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], RostersController.prototype, "findOne", null);
 __decorate([

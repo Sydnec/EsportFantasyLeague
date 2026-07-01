@@ -11,6 +11,7 @@ import { Injectable, ConflictException, UnauthorizedException, } from '@nestjs/c
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { nanoid } from 'nanoid';
 let AuthService = class AuthService {
     prisma;
     jwtService;
@@ -18,6 +19,7 @@ let AuthService = class AuthService {
         this.prisma = prisma;
         this.jwtService = jwtService;
     }
+    oauthCodes = new Map();
     async register(dto) {
         const existingUser = await this.prisma.user.findFirst({
             where: {
@@ -35,7 +37,9 @@ let AuthService = class AuthService {
                 passwordHash,
             },
         });
-        return this.generateTokens(user.id, user.email);
+        const tokens = this.generateTokens(user.id, user.email, user.role);
+        await this.saveRefreshToken(user.id, tokens.refreshToken);
+        return tokens;
     }
     async login(dto) {
         const user = await this.prisma.user.findUnique({
@@ -48,21 +52,44 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid credentials');
         }
-        return this.generateTokens(user.id, user.email);
+        const tokens = this.generateTokens(user.id, user.email, user.role);
+        await this.saveRefreshToken(user.id, tokens.refreshToken);
+        return tokens;
     }
-    async refreshToken(userId) {
+    async refreshToken(userId, token) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
         });
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
-        return this.generateTokens(user.id, user.email);
+        const dbToken = await this.prisma.refreshToken.findUnique({
+            where: { token },
+        });
+        if (!dbToken || dbToken.expiresAt < new Date()) {
+            throw new UnauthorizedException('Invalid or expired refresh token');
+        }
+        const tokens = this.generateTokens(user.id, user.email, user.role);
+        await this.prisma.$transaction([
+            this.prisma.refreshToken.delete({ where: { token } }),
+            this.prisma.refreshToken.create({
+                data: {
+                    token: tokens.refreshToken,
+                    userId: user.id,
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                },
+            }),
+        ]);
+        return tokens;
     }
     async validateOAuthUser(profile) {
-        const { id: googleId, emails, displayName, photos } = profile;
-        const email = emails[0].value;
-        const avatarUrl = photos?.[0]?.value || null;
+        const rawProfile = profile;
+        const { id: googleId, emails, displayName, photos } = rawProfile;
+        const email = emails?.[0]?.value || rawProfile._json?.email?.trim() || undefined;
+        if (!email) {
+            throw new UnauthorizedException('No email provided by Google OAuth');
+        }
+        const avatarUrl = photos?.[0]?.value || rawProfile._json?.picture || null;
         let user = await this.prisma.user.findFirst({
             where: {
                 OR: [{ googleId }, { email }],
@@ -77,7 +104,16 @@ let AuthService = class AuthService {
             }
         }
         else {
-            const username = displayName.replace(/\s+/g, '').toLowerCase();
+            const baseUsername = displayName?.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() ||
+                rawProfile._json?.name?.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() ||
+                [rawProfile._json?.given_name, rawProfile._json?.family_name]
+                    .filter(Boolean)
+                    .join('')
+                    .replace(/[^a-zA-Z0-9]/g, '')
+                    .toLowerCase() ||
+                email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase() ||
+                `user${googleId.slice(0, 8)}`;
+            const username = baseUsername || `user${googleId.slice(0, 8)}`;
             let uniqueUsername = username;
             let counter = 1;
             while (await this.prisma.user.findUnique({
@@ -97,12 +133,58 @@ let AuthService = class AuthService {
         }
         return user;
     }
-    generateTokens(userId, email) {
-        const payload = { userId, email };
+    generateTokens(userId, email, role) {
+        const payload = { userId, email, role };
         return {
-            accessToken: this.jwtService.sign(payload, { expiresIn: '2h' }),
-            refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+            accessToken: this.jwtService.sign(payload, {
+                secret: process.env.JWT_ACCESS_SECRET ||
+                    'super-secret-access-key-change-in-production',
+                expiresIn: '2h',
+            }),
+            refreshToken: this.jwtService.sign(payload, {
+                secret: process.env.JWT_REFRESH_SECRET ||
+                    'super-secret-refresh-key-change-in-production',
+                expiresIn: '7d',
+            }),
         };
+    }
+    async saveRefreshToken(userId, token) {
+        await this.prisma.refreshToken.create({
+            data: {
+                token,
+                userId,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+        });
+    }
+    async logout(userId, token) {
+        await this.prisma.refreshToken.deleteMany({
+            where: {
+                userId,
+                token,
+            },
+        });
+    }
+    generateOAuthCode(userId, email, role) {
+        const code = nanoid(20);
+        this.oauthCodes.set(code, {
+            userId,
+            email,
+            role,
+            expiresAt: Date.now() + 30000,
+        });
+        return code;
+    }
+    async exchangeOAuthCode(code) {
+        const data = this.oauthCodes.get(code);
+        if (!data || data.expiresAt < Date.now()) {
+            this.oauthCodes.delete(code);
+            throw new UnauthorizedException('Invalid or expired oauth code');
+        }
+        this.oauthCodes.delete(code);
+        const tokens = this.generateTokens(data.userId, data.email, data.role);
+        await this.saveRefreshToken(data.userId, tokens.refreshToken);
+        return tokens;
     }
 };
 AuthService = __decorate([

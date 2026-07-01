@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -15,10 +16,12 @@ import { IngestionModule } from './ingestion/ingestion.module.js';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100, // 100 requests per minute
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100, // 100 requests per minute
+      },
+    ]),
     ScheduleModule.forRoot(),
     PrismaModule,
     AuditModule,
@@ -31,6 +34,7 @@ import { IngestionModule } from './ingestion/ingestion.module.js';
     RostersModule,
     IngestionModule,
   ],
+  controllers: [AppController],
   providers: [
     {
       provide: APP_GUARD,

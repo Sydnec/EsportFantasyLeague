@@ -11,6 +11,7 @@ import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { GoogleStrategy } from './strategies/google.strategy.js';
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy.js';
 let AuthModule = class AuthModule {
 };
 AuthModule = __decorate([
@@ -18,12 +19,12 @@ AuthModule = __decorate([
         imports: [
             PassportModule.register({ defaultStrategy: 'jwt' }),
             JwtModule.register({
-                secret: process.env.JWT_SECRET || 'super-secret-key-change-in-production',
+                secret: process.env.JWT_ACCESS_SECRET,
                 signOptions: { expiresIn: '2h' },
             }),
         ],
         controllers: [AuthController],
-        providers: [AuthService, JwtStrategy, GoogleStrategy],
+        providers: [AuthService, JwtStrategy, GoogleStrategy, JwtRefreshStrategy],
         exports: [AuthService, JwtModule],
     })
 ], AuthModule);

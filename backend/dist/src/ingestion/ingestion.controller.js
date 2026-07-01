@@ -10,7 +10,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 import { Controller, Post, UseGuards } from '@nestjs/common';
 import { PandaScoreService } from './pandascore.service.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
-import { Game } from '@prisma/client';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
+import { Game, Role } from '@prisma/client';
 let IngestionController = class IngestionController {
     pandascoreService;
     constructor(pandascoreService) {
@@ -29,7 +31,8 @@ __decorate([
 ], IngestionController.prototype, "syncMatches", null);
 IngestionController = __decorate([
     Controller('ingestion'),
-    UseGuards(JwtAuthGuard),
+    UseGuards(JwtAuthGuard, RolesGuard),
+    Roles(Role.ADMIN),
     __metadata("design:paramtypes", [PandaScoreService])
 ], IngestionController);
 export { IngestionController };

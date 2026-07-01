@@ -14,7 +14,7 @@ export class IngestionService implements OnModuleInit {
     private prisma: PrismaService,
     private scoringService: ScoringService,
     private pandaScoreService: PandaScoreService,
-  ) { }
+  ) {}
 
   async onModuleInit() {
     this.logger.log('Running initial sync on startup...');
@@ -40,7 +40,8 @@ export class IngestionService implements OnModuleInit {
   @Cron('* * * * *')
   async syncLiveMatchScores() {
     for (const game of Object.values(Game)) {
-      const hasActiveMatches = await this.pandaScoreService.hasActiveMatches(game);
+      const hasActiveMatches =
+        await this.pandaScoreService.hasActiveMatches(game);
       const lastSync = this.lastSyncTimes.get(game) || 0;
       const timeSinceLastSync = Date.now() - lastSync;
       const tenMinutes = 10 * 60 * 1000;
@@ -136,7 +137,8 @@ export class IngestionService implements OnModuleInit {
 
     if (!allScored) {
       this.logger.log(
-        `Match day ${matchDayId} marked as SCORED. Waiting for sibling games on date ${targetMatchDay.date.toISOString().split('T')[0]
+        `Match day ${matchDayId} marked as SCORED. Waiting for sibling games on date ${
+          targetMatchDay.date.toISOString().split('T')[0]
         } to finalize before scoring rosters.`,
       );
       return;
@@ -194,7 +196,8 @@ export class IngestionService implements OnModuleInit {
     }
 
     this.logger.log(
-      `All match days on date ${targetMatchDay.date.toISOString().split('T')[0]
+      `All match days on date ${
+        targetMatchDay.date.toISOString().split('T')[0]
       } finalized. Scored ${rosters.length} rosters.`,
     );
   }
