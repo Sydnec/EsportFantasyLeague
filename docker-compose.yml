@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${ESFL_DB_USER:-admin}
+      POSTGRES_PASSWORD: ${ESFL_DB_PASSWORD:-password}
+      POSTGRES_DB: ${ESFL_DB_NAME:-fantasy_league}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${ESFL_DB_USER:-admin} -d ${ESFL_DB_NAME:-fantasy_league}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://${ESFL_DB_USER:-admin}:${ESFL_DB_PASSWORD:-password}@db:5432/${ESFL_DB_NAME:-fantasy_league}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

@@ -1,0 +1,28 @@
+.profile-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.profile-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.profile-subtitle {
+  color: var(--text-secondary);
+}
+.profile-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.profile-section-icon {
+  font-size: 2rem;
+}
+@media (min-width: 768px) {
+  .profile-header {
+    text-align: left;
+  }
+}

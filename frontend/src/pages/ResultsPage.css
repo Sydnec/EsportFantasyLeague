@@ -1,0 +1,28 @@
+.results-header { margin-bottom: 24px; }
+.results-header h1 { font-size: 1.6rem; font-weight: 700; }
+.results-meta { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.results-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+.stat-mini { text-align: center; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.stat-mini.highlight { border: 1px solid var(--accent-primary); background: rgba(0, 212, 255, 0.05); }
+.stat-mini-number { display: block; font-size: 1.5rem; font-weight: 700; font-family: 'Outfit', sans-serif; }
+.stat-mini-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+.results-list { display: flex; flex-direction: column; gap: 12px; }
+.result-card { cursor: pointer; padding: 0; }
+.result-card.winner { border-color: rgba(255, 215, 0, 0.3); background: rgba(255, 215, 0, 0.02); }
+.result-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; }
+.result-header-left { display: flex; align-items: center; gap: 16px; }
+.result-rank { font-size: 1.2rem; min-width: 36px; text-align: center; }
+.rank-number { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); }
+.result-user { display: flex; flex-direction: column; }
+.result-username { font-weight: 600; font-size: 1.1rem; }
+.winner-badge { display: inline-block; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; background: rgba(255, 215, 0, 0.2); color: #ffd700; border-radius: 999px; margin-top: 4px; width: fit-content; }
+.result-score { text-align: right; }
+.score-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+.score-value.text-primary { color: var(--accent-primary); }
+.score-unit { font-size: 0.85rem; color: var(--text-secondary); margin-left: 4px; }
+.result-picks { padding: 16px; border-top: 1px solid var(--border-light); background: rgba(255, 255, 255, 0.02); display: flex; flex-direction: column; gap: 8px; }
+.result-pick { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--border-radius-sm); }
+.result-pick-name { font-weight: 600; font-size: 0.95rem; }
+.result-pick-team { font-size: 0.8rem; color: var(--text-secondary); }
+
+@media (max-width: 768px) { .results-stats { grid-template-columns: 1fr; } }

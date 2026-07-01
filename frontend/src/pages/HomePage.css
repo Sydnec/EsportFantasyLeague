@@ -1,0 +1,45 @@
+.home-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.home-subtitle {
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+.home-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 3rem;
+  gap: 12px;
+}
+.home-filters-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.home-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin: 0 8px;
+  flex: 0 1 auto;
+  min-width: 120px;
+  justify-content: center;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.home-filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0.3;
+}
+
+

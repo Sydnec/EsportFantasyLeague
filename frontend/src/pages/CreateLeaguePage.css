@@ -1,0 +1,6 @@
+.create-form-card { padding: 32px; }
+.create-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.invite-code-display { background: var(--bg-card); border: 1px dashed var(--accent-primary); border-radius: var(--border-radius-md); padding: 16px; cursor: pointer; }
+
+.invite-code { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 700; color: var(--accent-primary); display: block; margin-bottom: 4px; }
+.copy-hint { font-size: 0.8rem; color: var(--text-muted); }
