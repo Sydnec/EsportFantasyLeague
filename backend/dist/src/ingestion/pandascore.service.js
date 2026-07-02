@@ -98,7 +98,12 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         status: 'OPEN',
                     },
                 });
-                await this.prisma.match.upsert({
+                const existingMatch = await this.prisma.match.findUnique({
+                    where: { id: matchData.id.toString() },
+                    select: { status: true },
+                });
+                const wasFinished = existingMatch?.status === 'finished';
+                const dbMatch = await this.prisma.match.upsert({
                     where: { id: matchData.id.toString() },
                     update: {
                         scheduledAt,
@@ -127,6 +132,9 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                             : null,
                     },
                 });
+                if (matchData.status === 'finished' && !wasFinished) {
+                    await this.syncMatchPerformances(dbMatch.id, game, matchDay.id);
+                }
             }
             this.logger.log(`Synced ${data.length} upcoming matches for ${game}`);
         }

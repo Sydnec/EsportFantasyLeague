@@ -35,7 +35,8 @@ let IngestionService = IngestionService_1 = class IngestionService {
             this.logger.log(`Syncing matches for ${game}...`);
             await this.pandaScoreService.syncUpcomingMatches(game);
         }
-        this.logger.log('Finished big PandaScore synchronization.');
+        this.logger.log('Finished big PandaScore synchronization. Launching point calculation...');
+        await this.processLockedMatchDays();
     }
     async syncLiveMatchScores() {
         for (const game of Object.values(Game)) {
@@ -67,6 +68,11 @@ let IngestionService = IngestionService_1 = class IngestionService {
             });
             const allMatchesFinished = matches.length > 0 && matches.every((m) => m.status === 'finished');
             if (!allMatchesFinished) {
+                continue;
+            }
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const allFinishedForOneHour = matches.every((m) => m.finishedAt && m.finishedAt <= oneHourAgo);
+            if (!allFinishedForOneHour) {
                 continue;
             }
             const unscoredPerformances = matchDay.performances.filter((p) => p.score === null);

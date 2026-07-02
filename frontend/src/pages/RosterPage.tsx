@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { proPlayersApi } from '../api/pro-players';
 import { rostersApi } from '../api/rosters';
@@ -30,6 +30,16 @@ export function RosterPage() {
   const [success, setSuccess] = useState(false);
   const [existingRoster, setExistingRoster] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(true);
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+
+  const toggleTeam = (teamKey: string) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamKey)) next.delete(teamKey);
+      else next.add(teamKey);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!leagueId || !matchDayId) return;
@@ -137,6 +147,28 @@ export function RosterPage() {
     (p.team?.acronym || p.team?.name || '').toLowerCase().includes(search.toLowerCase()) ||
     p.role.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const groupedPlayers = useMemo(() => {
+    const groups: Record<string, { teamName: string; teamImageUrl?: string | null; game: string; players: ProPlayer[] }> = {};
+    filtered.forEach((player) => {
+      const teamId = player.team?.id || 'unknown';
+      const teamName = player.team?.name || 'Inconnue';
+      const game = player.game;
+      const key = `${teamId}-${game}`;
+      if (!groups[key]) {
+        groups[key] = {
+          teamName,
+          teamImageUrl: player.team?.imageUrl,
+          game,
+          players: [],
+        };
+      }
+      groups[key].players.push(player);
+    });
+    return Object.entries(groups)
+      .map(([key, data]) => ({ key, ...data }))
+      .sort((a, b) => a.teamName.localeCompare(b.teamName));
+  }, [filtered]);
 
   if (loading) return <div className="page container" id="roster-loading"><div className="skeleton" style={{ height: 500 }} /></div>;
 
@@ -294,46 +326,72 @@ export function RosterPage() {
           <div className="roster-search" id="roster-search">
             <input id="roster-search-input" type="text" className="input-field" placeholder="🔍 Rechercher des joueurs..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div className="player-grid" id="roster-player-grid">
-            {filtered.map((player) => {
-              const isSelected = selected.includes(player.id);
-              const isCooldown = cooldownPlayers.has(player.id);
-              const gameTag = isMultiGame ? (GAME_TAGS[player.game] || player.game) : '';
-              const displayRole = gameTag ? `[${gameTag}] ${player.role}` : player.role;
+          <div className="player-groups" id="roster-player-groups" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {groupedPlayers.length === 0 && (
+              <div className="empty-state text-center text-secondary p-4">
+                Aucun joueur trouvé
+              </div>
+            )}
+            {groupedPlayers.map((group) => {
+              const isExpanded = expandedTeams.has(group.key);
+              const gameTag = isMultiGame ? (GAME_TAGS[group.game] || group.game) : GAME_TAGS[group.game] || group.game;
+              
               return (
-                <div
-                  key={player.id}
-                  id={`roster-player-card-${player.id}`}
-                  className={`card player-card ${isSelected ? 'selected' : ''} ${isCooldown ? 'cooldown' : ''}`}
-                  onClick={() => !isCooldown && togglePlayer(player.id)}
-                  style={{
-                    opacity: isCooldown ? 0.6 : 1,
-                    cursor: isCooldown ? 'not-allowed' : 'pointer',
-                    pointerEvents: isCooldown ? 'all' : 'auto',
-                    border: isCooldown ? '1px dashed var(--border-light)' : undefined,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    {player.team?.imageUrl && (
-                      <img 
-                        src={player.team.imageUrl} 
-                        alt={player.team.name} 
-                        style={{ width: '40px', height: '40px', objectFit: 'contain' }} 
-                      />
-                    )}
-                    <div className="player-info" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span className="player-name" style={{ fontWeight: 600 }}>{player.name}</span>
-                      <span className="player-team" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {player.team?.acronym || player.team?.name || ''}
-                      </span>
+                <div key={group.key} className="team-group card" style={{ padding: '0', overflow: 'hidden' }}>
+                  <div 
+                    className="team-group-header" 
+                    onClick={() => toggleTeam(group.key)}
+                    style={{ 
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                      padding: '16px', cursor: 'pointer', background: 'var(--bg-card)',
+                      borderBottom: isExpanded ? '1px solid var(--border-light)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ display: 'inline-block', width: '20px', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                      {group.teamImageUrl && (
+                        <img src={group.teamImageUrl} alt={group.teamName} style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                      )}
+                      <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>{group.teamName}</span>
                     </div>
+                    <span className="badge badge-info">{gameTag}</span>
                   </div>
-                  {isCooldown ? (
-                    <span className="badge badge-warning" style={{ background: '#f59e0b20', color: '#d97706', border: '1px solid #d9770630' }}>🔒 Récupération</span>
-                  ) : (
-                    <span className="badge badge-info">{displayRole}</span>
+                  
+                  {isExpanded && (
+                    <div className="player-grid" style={{ padding: '16px', background: 'var(--bg-light)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+                      {group.players.map((player) => {
+                        const isSelected = selected.includes(player.id);
+                        const isCooldown = cooldownPlayers.has(player.id);
+                        const displayRole = player.role;
+                        return (
+                          <div
+                            key={player.id}
+                            id={`roster-player-card-${player.id}`}
+                            className={`card player-card ${isSelected ? 'selected' : ''} ${isCooldown ? 'cooldown' : ''}`}
+                            onClick={() => !isCooldown && togglePlayer(player.id)}
+                            style={{
+                              opacity: isCooldown ? 0.6 : 1,
+                              cursor: isCooldown ? 'not-allowed' : 'pointer',
+                              pointerEvents: isCooldown ? 'all' : 'auto',
+                              border: isCooldown ? '1px dashed var(--border-light)' : undefined,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                              <div className="player-info" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span className="player-name" style={{ fontWeight: 600 }}>{player.name}</span>
+                              </div>
+                            </div>
+                            {isCooldown ? (
+                              <span className="badge badge-warning" style={{ background: '#f59e0b20', color: '#d97706', border: '1px solid #d9770630' }}>🔒 Récupération</span>
+                            ) : (
+                              <span className="badge badge-info">{displayRole}</span>
+                            )}
+                            {isSelected && <span className="player-check">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                  {isSelected && <span className="player-check">✓</span>}
                 </div>
               );
             })}

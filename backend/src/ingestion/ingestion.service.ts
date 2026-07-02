@@ -31,7 +31,8 @@ export class IngestionService implements OnModuleInit {
       this.logger.log(`Syncing matches for ${game}...`);
       await this.pandaScoreService.syncUpcomingMatches(game);
     }
-    this.logger.log('Finished big PandaScore synchronization.');
+    this.logger.log('Finished big PandaScore synchronization. Launching point calculation...');
+    await this.processLockedMatchDays();
   }
 
   /**
@@ -83,6 +84,15 @@ export class IngestionService implements OnModuleInit {
         matches.length > 0 && matches.every((m) => m.status === 'finished');
       if (!allMatchesFinished) {
         continue; // Keep the matchday in LOCKED status until matches finish
+      }
+
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const allFinishedForOneHour = matches.every(
+        (m) => m.finishedAt && m.finishedAt <= oneHourAgo,
+      );
+
+      if (!allFinishedForOneHour) {
+        continue; // Wait until all matches have been finished for at least 1 hour
       }
 
       const unscoredPerformances = matchDay.performances.filter(
