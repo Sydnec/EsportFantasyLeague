@@ -17,12 +17,16 @@ let LolScoringStrategy = class LolScoringStrategy {
         const visionScore = Number(rawStats['visionScore'] ?? 0);
         const firstBlood = Boolean(rawStats['firstBlood']);
         const pentakills = Number(rawStats['pentakills'] ?? 0);
+        const damageDealt = Number(rawStats['damageDealt'] ?? 0);
+        const wardsPlaced = Number(rawStats['wardsPlaced'] ?? 0);
         const win = Boolean(rawStats['win']);
         score += kills * 3.0;
         score += deaths * -1.0;
         score += assists * 1.5;
-        score += cs * 0.01;
+        score += cs * 0.02;
         score += visionScore * 0.05;
+        score += wardsPlaced * 0.1;
+        score += damageDealt * 0.0001;
         if (firstBlood)
             score += 2.0;
         score += pentakills * 10.0;

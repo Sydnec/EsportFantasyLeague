@@ -14,6 +14,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { IngestionModule } from './ingestion/ingestion.module.js';
 import { DevToolsModule } from './dev-tools/dev-tools.module.js';
+import { MatchesModule } from './matches/matches.module.js';
 
 
 @Module({
@@ -36,6 +37,7 @@ import { DevToolsModule } from './dev-tools/dev-tools.module.js';
     RostersModule,
     IngestionModule,
     DevToolsModule,
+    MatchesModule,
   ],
   controllers: [AppController],
   providers: [

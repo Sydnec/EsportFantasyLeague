@@ -20,6 +20,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { IngestionModule } from './ingestion/ingestion.module.js';
 import { DevToolsModule } from './dev-tools/dev-tools.module.js';
+import { MatchesModule } from './matches/matches.module.js';
 let AppModule = class AppModule {
 };
 AppModule = __decorate([
@@ -43,6 +44,7 @@ AppModule = __decorate([
             RostersModule,
             IngestionModule,
             DevToolsModule,
+            MatchesModule,
         ],
         controllers: [AppController],
         providers: [

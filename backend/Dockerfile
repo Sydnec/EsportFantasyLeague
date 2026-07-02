@@ -25,6 +25,7 @@ COPY --chown=node:node --from=builder /app/node_modules/.prisma ./node_modules/.
 COPY --chown=node:node --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/prisma ./prisma
+COPY --chown=node:node --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 USER node
 

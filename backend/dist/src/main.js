@@ -10,7 +10,7 @@ async function bootstrap() {
         throw new Error('FATAL: JWT_ACCESS_SECRET or JWT_REFRESH_SECRET environment variable is missing.');
     }
     const app = await NestFactory.create(AppModule);
-    app.use(helmet());
+    app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
     app.useGlobalPipes(new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,

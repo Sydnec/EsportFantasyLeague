@@ -22,8 +22,8 @@ let ProPlayersController = class ProPlayersController {
     findAll(game, team, role) {
         return this.proPlayersService.findAll({ game, team, role });
     }
-    findByMatchDay(matchDayId) {
-        return this.proPlayersService.findByMatchDay(matchDayId);
+    findByMatchDay(matchDayId, leagueId) {
+        return this.proPlayersService.findByMatchDay(matchDayId, leagueId);
     }
     findOne(id) {
         return this.proPlayersService.findById(id);
@@ -41,8 +41,9 @@ __decorate([
 __decorate([
     Get('match-day/:matchDayId'),
     __param(0, Param('matchDayId')),
+    __param(1, Query('leagueId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], ProPlayersController.prototype, "findByMatchDay", null);
 __decorate([

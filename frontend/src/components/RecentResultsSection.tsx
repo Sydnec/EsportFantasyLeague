@@ -34,7 +34,8 @@ export function RecentResultsSection({
       const dateStr = md.date.split('T')[0];
       const validMatches = md.matches ? md.matches.filter((m: any) => {
         const isFinished = m.status === 'finished' || m.status === 'canceled';
-        const isNotExcluded = !m.tournamentName || !excludedTournaments.has(m.tournamentName);
+        const leagueName = m.tournamentName?.split(' / ')[0];
+        const isNotExcluded = !leagueName || !excludedTournaments.has(leagueName);
         return isFinished && isNotExcluded;
       }) : [];
       if (validMatches.length === 0) return acc;

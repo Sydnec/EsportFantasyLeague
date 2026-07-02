@@ -12,6 +12,7 @@ export declare class ProPlayersController {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
     } & {
         id: string;
@@ -22,9 +23,10 @@ export declare class ProPlayersController {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     })[]>;
-    findByMatchDay(matchDayId: string): Promise<({
+    findByMatchDay(matchDayId: string, leagueId?: string): Promise<({
         team: {
             id: string;
             createdAt: Date;
@@ -33,6 +35,7 @@ export declare class ProPlayersController {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
         performances: {
             id: string;
@@ -47,6 +50,7 @@ export declare class ProPlayersController {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     })[]>;
     findOne(id: string): Promise<{
@@ -58,6 +62,7 @@ export declare class ProPlayersController {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
         performances: ({
             matchDay: {
@@ -83,6 +88,7 @@ export declare class ProPlayersController {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     }>;
 }

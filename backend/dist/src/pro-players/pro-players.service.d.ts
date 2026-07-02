@@ -16,6 +16,7 @@ export declare class ProPlayersService {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
     } & {
         id: string;
@@ -26,6 +27,7 @@ export declare class ProPlayersService {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     })[]>;
     findById(id: string): Promise<{
@@ -37,6 +39,7 @@ export declare class ProPlayersService {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
         performances: ({
             matchDay: {
@@ -62,9 +65,10 @@ export declare class ProPlayersService {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     }>;
-    findByMatchDay(matchDayId: string): Promise<({
+    findByMatchDay(matchDayId: string, leagueId?: string): Promise<({
         team: {
             id: string;
             createdAt: Date;
@@ -73,6 +77,7 @@ export declare class ProPlayersService {
             game: import("@prisma/client").$Enums.Game;
             imageUrl: string | null;
             acronym: string | null;
+            location: string | null;
         } | null;
         performances: {
             id: string;
@@ -87,6 +92,7 @@ export declare class ProPlayersService {
         game: import("@prisma/client").$Enums.Game;
         teamId: string | null;
         imageUrl: string | null;
+        nationality: string | null;
         isActive: boolean;
     })[]>;
 }

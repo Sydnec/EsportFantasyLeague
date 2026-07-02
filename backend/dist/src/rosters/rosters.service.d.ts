@@ -25,6 +25,7 @@ export declare class RostersService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;
@@ -64,6 +65,7 @@ export declare class RostersService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;
@@ -108,6 +110,7 @@ export declare class RostersService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;
@@ -161,6 +164,7 @@ export declare class RostersService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;
@@ -200,6 +204,7 @@ export declare class RostersService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;

@@ -101,7 +101,7 @@ export function HomePage() {
       if (md.matches) {
         md.matches.forEach((m: any) => {
           if (m.tournamentName) {
-            groups[game].add(m.tournamentName);
+            groups[game].add(m.tournamentName.split(' / ')[0]);
           }
         });
       }
