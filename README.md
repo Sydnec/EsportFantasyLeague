@@ -41,6 +41,13 @@ npm install
 npm run dev
 ```
 
+### 4. Dashboard local
+Un petit dashboard local non déployé est disponible dans `dev-dashboard/` pour inspecter et modifier les données depuis cette machine uniquement. Il s'ouvre directement dans le navigateur et parle au backend local.
+
+Dans `dev-dashboard/`, lance `npm install` puis `npm run dev` pour le mode front, ou `npm run build` puis `npm start` pour le serveur local qui sert le build et proxifie l’API.
+
+Par défaut il vise `http://localhost:3000`. Si tu veux exécuter les requêtes SQL brutes depuis ce dashboard, active aussi `DEV_DASHBOARD_ALLOW_SQL=true` côté backend.
+
 ## 🌍 Hébergement & Déploiement
 
 L'architecture étant découpée entre un backend (NestJS + Postgres) et un frontend (React), plusieurs options de déploiement sont envisageables. Actuellement, la stratégie est la suivante :

@@ -14,3 +14,7 @@ yarn-error.log
 
 # Docker
 .docker/
+
+# Local-only dev dashboard
+/dev-dashboard/
+/dev-dashboard/dist/
