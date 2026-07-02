@@ -18,8 +18,11 @@ export class ProPlayersController {
   }
 
   @Get('match-day/:matchDayId')
-  findByMatchDay(@Param('matchDayId') matchDayId: string) {
-    return this.proPlayersService.findByMatchDay(matchDayId);
+  findByMatchDay(
+    @Param('matchDayId') matchDayId: string,
+    @Query('leagueId') leagueId?: string,
+  ) {
+    return this.proPlayersService.findByMatchDay(matchDayId, leagueId);
   }
 
   @Get(':id')

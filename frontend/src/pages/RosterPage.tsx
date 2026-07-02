@@ -63,7 +63,7 @@ export function RosterPage() {
 
         // Fetch pro players for all sibling match days
         const playersArrays = await Promise.all(siblingMds.map(md => 
-          proPlayersApi.getByMatchDay(md.id)
+          proPlayersApi.getByMatchDay(md.id, leagueId)
         ));
 
         // Compute cooldown logic in frontend

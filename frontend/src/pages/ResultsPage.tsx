@@ -36,6 +36,8 @@ export function ResultsPage() {
     });
   };
 
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
+
   useEffect(() => {
     if (!leagueId || !matchDayId) return;
 
@@ -49,6 +51,7 @@ export function ResultsPage() {
 
         setLeague(l);
         setStatus(targetMd.status);
+        setTargetDate(new Date(targetMd.date));
 
         // Find all match days on the same date for the league's games
         const targetDateStr = new Date(targetMd.date).toISOString().split('T')[0];
@@ -60,7 +63,7 @@ export function ResultsPage() {
         // Fetch rosters and players for all sibling match days
         const [rostersArrays, playersArrays] = await Promise.all([
           Promise.all(siblingMds.map(md => rostersApi.getByLeagueAndMatchDay(leagueId, md.id))),
-          Promise.all(siblingMds.map(md => proPlayersApi.getByMatchDay(md.id)))
+          Promise.all(siblingMds.map(md => proPlayersApi.getByMatchDay(md.id, leagueId)))
         ]);
 
         // Merge rosters by user
@@ -123,7 +126,14 @@ export function ResultsPage() {
 
   const groupedPlayers = useMemo(() => {
     const groups: Record<string, { teamName: string; teamImageUrl?: string | null; game: string; players: ProPlayer[] }> = {};
-    players.forEach((player) => {
+    
+    // Si la journée est terminée, on n'affiche que les joueurs ayant effectivement joué (score != null)
+    const isPast = status === 'SCORED' || status === 'FINISHED';
+    const filteredPlayers = isPast 
+      ? players.filter(p => p.performances && p.performances.length > 0 && p.performances[0].score !== null && p.performances[0].score !== undefined)
+      : players;
+
+    filteredPlayers.forEach((player) => {
       const teamId = player.team?.id || 'unknown';
       const teamName = player.team?.name || 'Inconnue';
       const game = player.game;
@@ -141,7 +151,7 @@ export function ResultsPage() {
     return Object.entries(groups)
       .map(([key, data]) => ({ key, ...data }))
       .sort((a, b) => a.teamName.localeCompare(b.teamName));
-  }, [players]);
+  }, [players, status]);
 
   if (loading) return <div className="page container" id="results-loading"><div className="skeleton" style={{ height: 400 }} /></div>;
 
@@ -156,7 +166,10 @@ export function ResultsPage() {
         <div>
           <h1 id="results-title">Résultats de la journée</h1>
           <div className="results-meta" id="results-meta">
-            <span className="text-secondary">{league?.name}</span>
+            <span className="text-secondary">
+              {league?.name} 
+              {targetDate && ` - ${targetDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+            </span>
             {status && <StatusBadge status={status as any} />}
           </div>
         </div>
