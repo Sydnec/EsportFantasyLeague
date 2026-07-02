@@ -22,6 +22,7 @@ async function bootstrap() {
     const allowedOrigins = new Set([
         'http://localhost:5173',
         'http://localhost:3001',
+        'http://localhost:4174',
     ]);
     const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/$/, '');
     if (frontendUrl) {

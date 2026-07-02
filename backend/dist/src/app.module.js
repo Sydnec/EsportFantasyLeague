@@ -19,6 +19,7 @@ import { RostersModule } from './rosters/rosters.module.js';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { IngestionModule } from './ingestion/ingestion.module.js';
+import { DevToolsModule } from './dev-tools/dev-tools.module.js';
 let AppModule = class AppModule {
 };
 AppModule = __decorate([
@@ -41,6 +42,7 @@ AppModule = __decorate([
             ScoringModule,
             RostersModule,
             IngestionModule,
+            DevToolsModule,
         ],
         controllers: [AppController],
         providers: [
