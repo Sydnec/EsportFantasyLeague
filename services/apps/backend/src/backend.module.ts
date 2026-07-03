@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { BackendController } from './backend.controller';
-import { BackendService } from './backend.service';
+import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
-  controllers: [BackendController],
-  providers: [BackendService],
+  imports: [PrismaModule, AuthModule],
+  controllers: [],
+  providers: [],
 })
 export class BackendModule {}
