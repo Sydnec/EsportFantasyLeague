@@ -7,6 +7,10 @@
   ],
   "allowScripts": {
     "unrs-resolver": true,
-    "fsevents@2.3.3": true
+    "fsevents@2.3.3": true,
+    "prisma@6.15.0": true,
+    "bcrypt@6.0.0": true,
+    "@prisma/engines@6.15.0": true,
+    "@prisma/client@6.15.0": true
   }
 }

@@ -24,10 +24,10 @@ export class GatewayModule implements NestModule {
     consumer
       .apply(backendProxy)
       .forRoutes(
-        '/api/v1/auth/*',
-        '/api/v1/leagues/*',
-        '/api/v1/rosters/*',
-        '/api/v1/users/*',
+        '/api/v1/auth', '/api/v1/auth/*',
+        '/api/v1/leagues', '/api/v1/leagues/*',
+        '/api/v1/rosters', '/api/v1/rosters/*',
+        '/api/v1/users', '/api/v1/users/*',
       );
 
     // 3. Configurer le proxy pour l'Esport Adapter Service (port 3002)
@@ -36,6 +36,6 @@ export class GatewayModule implements NestModule {
       changeOrigin: true,
     });
 
-    consumer.apply(esportProxy).forRoutes('/api/v1/esport/*');
+    consumer.apply(esportProxy).forRoutes('/api/v1/esport', '/api/v1/esport/*');
   }
 }
