@@ -203,22 +203,6 @@ export function MatchDetailPage() {
                 })}
               </div>
             )}
-            
-            {/* RAW DATA DEBUG */}
-            {import.meta.env.DEV && (
-              <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000 }}>
-                <button 
-                  className="btn btn-secondary" 
-                  style={{ fontSize: '0.8rem', padding: '6px 12px', opacity: 0.7 }}
-                  onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(match, null, 2));
-                    alert('Données brutes copiées dans le presse-papier !');
-                  }}
-                >
-                  📋 Copier JSON (Debug)
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
