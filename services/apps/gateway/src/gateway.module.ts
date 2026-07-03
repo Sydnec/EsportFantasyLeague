@@ -12,8 +12,8 @@ import { AuthMiddleware } from './auth.middleware';
 })
 export class GatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // 1. Appliquer le middleware d'authentification sur toutes les routes /api/v1/*
-    consumer.apply(AuthMiddleware).forRoutes('/api/v1/*');
+    // 1. Appliquer le middleware d'authentification sur toutes les routes /api/v1/*path
+    consumer.apply(AuthMiddleware).forRoutes('/api/v1/*path');
 
     // 2. Configurer les proxies pour le Backend Service (port 3001)
     const backendProxy = createProxyMiddleware({
@@ -24,10 +24,10 @@ export class GatewayModule implements NestModule {
     consumer
       .apply(backendProxy)
       .forRoutes(
-        '/api/v1/auth', '/api/v1/auth/*',
-        '/api/v1/leagues', '/api/v1/leagues/*',
-        '/api/v1/rosters', '/api/v1/rosters/*',
-        '/api/v1/users', '/api/v1/users/*',
+        '/api/v1/auth', '/api/v1/auth/*path',
+        '/api/v1/leagues', '/api/v1/leagues/*path',
+        '/api/v1/rosters', '/api/v1/rosters/*path',
+        '/api/v1/users', '/api/v1/users/*path',
       );
 
     // 3. Configurer le proxy pour l'Esport Adapter Service (port 3002)
@@ -36,6 +36,7 @@ export class GatewayModule implements NestModule {
       changeOrigin: true,
     });
 
-    consumer.apply(esportProxy).forRoutes('/api/v1/esport', '/api/v1/esport/*');
+    // Substituted '/api/v1/esport/*' with '/api/v1/esport/*path'
+    consumer.apply(esportProxy).forRoutes('/api/v1/esport', '/api/v1/esport/*path');
   }
 }
