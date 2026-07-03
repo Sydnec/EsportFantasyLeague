@@ -22,6 +22,7 @@ export declare class MatchDaysService {
                 game: import("@prisma/client").$Enums.Game;
                 imageUrl: string | null;
                 acronym: string | null;
+                location: string | null;
             };
             teamB: {
                 id: string;
@@ -31,6 +32,7 @@ export declare class MatchDaysService {
                 game: import("@prisma/client").$Enums.Game;
                 imageUrl: string | null;
                 acronym: string | null;
+                location: string | null;
             };
         } & {
             id: string;
@@ -46,6 +48,9 @@ export declare class MatchDaysService {
             teamAScore: number | null;
             teamBScore: number | null;
             tournamentName: string | null;
+            streamUrl: string | null;
+            matchType: string | null;
+            numberOfGames: number | null;
             finishedAt: Date | null;
         })[];
     } & {
@@ -67,6 +72,7 @@ export declare class MatchDaysService {
                 game: import("@prisma/client").$Enums.Game;
                 imageUrl: string | null;
                 acronym: string | null;
+                location: string | null;
             };
             teamB: {
                 id: string;
@@ -76,6 +82,7 @@ export declare class MatchDaysService {
                 game: import("@prisma/client").$Enums.Game;
                 imageUrl: string | null;
                 acronym: string | null;
+                location: string | null;
             };
         } & {
             id: string;
@@ -91,6 +98,9 @@ export declare class MatchDaysService {
             teamAScore: number | null;
             teamBScore: number | null;
             tournamentName: string | null;
+            streamUrl: string | null;
+            matchType: string | null;
+            numberOfGames: number | null;
             finishedAt: Date | null;
         })[];
         performances: ({
@@ -103,6 +113,7 @@ export declare class MatchDaysService {
                     game: import("@prisma/client").$Enums.Game;
                     imageUrl: string | null;
                     acronym: string | null;
+                    location: string | null;
                 } | null;
                 id: string;
                 role: string;

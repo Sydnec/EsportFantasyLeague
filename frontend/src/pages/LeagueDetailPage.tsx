@@ -35,7 +35,8 @@ export function LeagueDetailPage() {
           const hasAllowedMatches = md.matches && md.matches.some((match: any) => {
             const isAllSelected = l.tournaments.includes(`ALL:${md.game}`);
             if (isAllSelected) return true;
-            return l.tournaments.includes(match.tournamentName);
+            const leagueName = match.tournamentName?.split(' / ')[0];
+            return l.tournaments.includes(leagueName || '');
           });
           return hasAllowedMatches;
         });
@@ -155,7 +156,8 @@ export function LeagueDetailPage() {
                   if (!md.matches) return;
                   const isAllSelected = league.tournaments.includes(`ALL:${md.game}`);
                   md.matches.forEach((match: any) => {
-                    if (isAllSelected || league.tournaments.includes(match.tournamentName)) {
+                    const leagueName = match.tournamentName?.split(' / ')[0];
+                    if (isAllSelected || league.tournaments.includes(leagueName || '')) {
                       allRelevantMatchTimes.push(new Date(match.scheduledAt).getTime());
                     }
                   });
@@ -260,7 +262,8 @@ export function LeagueDetailPage() {
                               return md.matches.some((match: any) => {
                                 const isAllSelected = league.tournaments.includes(`ALL:${md.game}`);
                                 if (isAllSelected) return true;
-                                return league.tournaments.includes(match.tournamentName);
+                                const leagueName = match.tournamentName?.split(' / ')[0];
+            return league.tournaments.includes(leagueName || '');
                               });
                             });
 
@@ -334,7 +337,8 @@ export function LeagueDetailPage() {
                           const allowedMatches = md.matches.filter((match: any) => {
                             const isAllSelected = league.tournaments.includes(`ALL:${md.game}`);
                             if (isAllSelected) return true;
-                            return league.tournaments.includes(match.tournamentName);
+                            const leagueName = match.tournamentName?.split(' / ')[0];
+            return league.tournaments.includes(leagueName || '');
                           });
 
                           allowedMatches.forEach((m: any) => {

@@ -5,6 +5,7 @@ export interface PandaScorePlayer {
     name: string;
     role: string | null;
     image_url: string | null;
+    nationality?: string | null;
     active: boolean;
 }
 export interface PandaScoreTeam {
@@ -12,6 +13,7 @@ export interface PandaScoreTeam {
     name: string;
     acronym: string | null;
     image_url: string | null;
+    location?: string | null;
     players?: PandaScorePlayer[];
 }
 export interface PandaScoreResult {
@@ -23,11 +25,28 @@ export interface PandaScoreMatch {
     begin_at: string;
     end_at?: string | null;
     status: string;
-    games: number;
+    match_type: string | null;
+    number_of_games: number | null;
+    map_picks: any | null;
+    games: any;
     winner_id: number | null;
     league: {
         name: string;
     } | null;
+    serie?: {
+        name?: string;
+        full_name?: string;
+    } | null;
+    tournament?: {
+        id: number;
+        name: string;
+        tier?: string;
+    } | null;
+    streams_list?: Array<{
+        main: boolean;
+        raw_url: string;
+        language: string;
+    }> | null;
     opponents: Array<{
         opponent: PandaScoreTeam;
     }>;
@@ -39,6 +58,14 @@ export interface PandaScoreGamePlayer {
     };
     stats?: Record<string, any>;
     win?: boolean;
+    champion?: {
+        name: string;
+        image_url: string;
+    };
+    agent?: {
+        name: string;
+        image_url: string;
+    };
 }
 export interface PandaScoreGameDetail {
     players?: PandaScoreGamePlayer[];
@@ -57,5 +84,6 @@ export declare class PandaScoreService {
     syncRunningMatches(game: Game): Promise<void>;
     syncMatchPerformances(matchId: string, game: Game, matchDayId: string): Promise<void>;
     private upsertTeam;
+    private fetchPlayersForTournament;
     private fetchPlayersForTeam;
 }

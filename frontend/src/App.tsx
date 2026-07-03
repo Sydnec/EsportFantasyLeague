@@ -12,6 +12,7 @@ import { RosterPage } from './pages/RosterPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { MatchDetailPage } from './pages/MatchDetailPage';
 
 function Layout() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/leagues/:id" element={<LeagueDetailPage />} />
           <Route path="/leagues/:leagueId/roster/:matchDayId" element={<RosterPage />} />
           <Route path="/leagues/:leagueId/results/:matchDayId" element={<ResultsPage />} />
+          <Route path="/matches/:matchId" element={<MatchDetailPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

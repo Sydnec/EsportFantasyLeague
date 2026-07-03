@@ -24,7 +24,13 @@ export const leaguesApi = {
   },
   getUpcomingTournaments: async (): Promise<Record<string, string[]>> => {
     const res = await apiClient.get<ApiResponse<Record<string, string[]>>>('/leagues/upcoming-tournaments');
-    return res.data.data;
+    const data = res.data.data;
+    const formatted: Record<string, string[]> = {};
+    for (const [game, tournaments] of Object.entries(data)) {
+      const leagues = Array.from(new Set(tournaments.map(t => t.split(' / ')[0]))).sort();
+      formatted[game] = leagues;
+    }
+    return formatted;
   },
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/leagues/${id}`);

@@ -38,7 +38,7 @@ export function MatchGroupList({ matches }: MatchGroupListProps) {
 
         // Group by tournament
         const byTournament = gameMatches.reduce((acc: any, m: any) => {
-          const t = m.tournamentName || 'Autres';
+          const t = m.tournamentName?.split(' / ')[0] || 'Autres';
           if (!acc[t]) acc[t] = [];
           acc[t].push(m);
           return acc;

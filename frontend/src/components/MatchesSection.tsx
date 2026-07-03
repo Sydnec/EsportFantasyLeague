@@ -36,7 +36,8 @@ export function MatchesSection({
         return false;
       }
       // Filter by excluded tournaments
-      if (match.tournamentName && excludedTournaments.has(match.tournamentName)) {
+      const leagueName = match.tournamentName?.split(' / ')[0];
+      if (leagueName && excludedTournaments.has(leagueName)) {
         return false;
       }
 

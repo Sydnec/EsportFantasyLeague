@@ -53,7 +53,18 @@ let ProPlayersService = class ProPlayersService {
         }
         return player;
     }
-    async findByMatchDay(matchDayId) {
+    async findByMatchDay(matchDayId, leagueId) {
+        let allowedTournaments = null;
+        let isAllSelected = false;
+        if (leagueId) {
+            const league = await this.prisma.league.findUnique({
+                where: { id: leagueId },
+                select: { tournaments: true },
+            });
+            if (league) {
+                allowedTournaments = league.tournaments;
+            }
+        }
         const matchDay = await this.prisma.matchDay.findUnique({
             where: { id: matchDayId },
             include: {
@@ -61,14 +72,23 @@ let ProPlayersService = class ProPlayersService {
                     select: {
                         teamAId: true,
                         teamBId: true,
+                        tournamentName: true,
                     },
                 },
             },
         });
         if (!matchDay)
             return [];
+        if (allowedTournaments) {
+            isAllSelected = allowedTournaments.includes(`ALL:${matchDay.game}`);
+        }
         const teamIds = new Set();
         matchDay.matches.forEach((m) => {
+            if (allowedTournaments && !isAllSelected) {
+                if (!m.tournamentName || !allowedTournaments.includes(m.tournamentName)) {
+                    return;
+                }
+            }
             teamIds.add(m.teamAId);
             teamIds.add(m.teamBId);
         });

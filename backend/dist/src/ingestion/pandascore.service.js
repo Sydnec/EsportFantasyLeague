@@ -70,10 +70,14 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
             for (const matchData of data) {
                 if (!matchData.opponents || matchData.opponents.length !== 2)
                     continue;
+                const tier = matchData.tournament?.tier?.toLowerCase();
+                if (tier !== 's' && tier !== 'a' && tier !== 'b' && tier !== 'c')
+                    continue;
                 const teamAData = matchData.opponents[0].opponent;
                 const teamBData = matchData.opponents[1].opponent;
-                const teamA = await this.upsertTeam(teamAData, game);
-                const teamB = await this.upsertTeam(teamBData, game);
+                const tournamentId = matchData.tournament?.id?.toString() || null;
+                const teamA = await this.upsertTeam(teamAData, game, tournamentId);
+                const teamB = await this.upsertTeam(teamBData, game, tournamentId);
                 const scheduledAt = new Date(matchData.begin_at);
                 const dateStr = scheduledAt.toISOString().split('T')[0];
                 const lockTime = new Date(scheduledAt.getTime() - 60 * 60 * 1000);
@@ -87,7 +91,6 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                     if (resB)
                         teamBScore = resB.score;
                 }
-                const tournamentName = matchData.league ? matchData.league.name : null;
                 const matchDay = await this.prisma.matchDay.upsert({
                     where: { date_game: { date: new Date(dateStr), game } },
                     update: {},
@@ -110,7 +113,10 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         status: matchData.status,
                         teamAScore,
                         teamBScore,
-                        tournamentName,
+                        tournamentName: `${matchData.league?.name || 'League'} / ${matchData.tournament?.name || 'Tournament'}`,
+                        streamUrl: matchData.streams_list?.find((s) => s.main)?.raw_url || null,
+                        matchType: matchData.match_type,
+                        numberOfGames: matchData.number_of_games,
                         games: matchData.games ?? null,
                         winnerId: matchData.winner_id
                             ? matchData.winner_id.toString()
@@ -125,7 +131,10 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         status: matchData.status,
                         teamAScore,
                         teamBScore,
-                        tournamentName,
+                        tournamentName: `${matchData.league?.name || 'League'} / ${matchData.tournament?.name || 'Tournament'}`,
+                        streamUrl: matchData.streams_list?.find((s) => s.main)?.raw_url || null,
+                        matchType: matchData.match_type,
+                        numberOfGames: matchData.number_of_games,
                         games: matchData.games ?? null,
                         winnerId: matchData.winner_id
                             ? matchData.winner_id.toString()
@@ -229,6 +238,8 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                 }
                 const wasFinished = dbMatch.status === 'finished';
                 const isFinished = matchData.status === 'finished';
+                const mainStream = matchData.streams_list?.find((s) => s.main) || matchData.streams_list?.[0];
+                const streamUrl = mainStream ? mainStream.raw_url : null;
                 await this.prisma.match.update({
                     where: { id: matchId },
                     data: {
@@ -238,6 +249,9 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         status: matchData.status,
                         teamAScore,
                         teamBScore,
+                        streamUrl,
+                        matchType: matchData.match_type,
+                        numberOfGames: matchData.number_of_games,
                         games: matchData.games ?? null,
                         winnerId: matchData.winner_id
                             ? matchData.winner_id.toString()
@@ -288,7 +302,7 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                     const exists = await this.prisma.proPlayer.findUnique({
                         where: { id: proPlayerId },
                     });
-                    if (!exists)
+                    if (!exists || !exists.isActive)
                         continue;
                     const stats = (playerData.stats || {});
                     const win = playerData.win === true || stats['win'] === true;
@@ -314,17 +328,29 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                             score: 0,
                             firstBloods: 0,
                             headshots: 0,
-                            acs: 0,
+                            damageDealt: 0,
+                            wardsPlaced: 0,
+                            kast: 0,
+                            games: [],
                             gamesCount: 0,
                         });
                     }
                     const acc = playerStatsAccumulator.get(proPlayerId);
                     acc.gamesCount += 1;
+                    const gameDetail = {
+                        champion: playerData.champion ?? playerData.agent ?? null,
+                        kills: Number(stats['kills'] ?? 0),
+                        deaths: Number(stats['deaths'] ?? 0),
+                        assists: Number(stats['assists'] ?? 0),
+                    };
+                    acc.games.push(gameDetail);
                     acc.kills += Number(stats['kills'] ?? 0);
                     acc.deaths += Number(stats['deaths'] ?? 0);
                     acc.assists += Number(stats['assists'] ?? 0);
                     acc.cs += Number(stats['cs'] ?? stats['minions_killed'] ?? 0);
                     acc.visionScore += Number(stats['vision_score'] ?? 0);
+                    acc.damageDealt += Number(stats['damage_dealt_to_champions'] ?? stats['damage_dealt'] ?? 0);
+                    acc.wardsPlaced += Number(stats['wards_placed'] ?? 0);
                     if (stats['first_blood'] === true || stats['first_blood'] === 1)
                         acc.firstBlood = true;
                     acc.pentakills += Number(stats['pentakills'] ?? 0);
@@ -335,6 +361,7 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                     acc.mvpStars += Number(stats['mvps'] ?? 0);
                     acc.bombPlants += Number(stats['bomb_plants'] ?? 0);
                     acc.bombDefusals += Number(stats['bomb_defusals'] ?? 0);
+                    acc.kast += Number(stats['kast'] ?? 0);
                     if (win)
                         acc.mapWin = true;
                     acc.goals += Number(stats['goals'] ?? 0);
@@ -344,11 +371,13 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                     acc.firstBloods += Number(stats['first_bloods'] ?? 0);
                     acc.headshots += Number(stats['headshots'] ?? 0);
                     acc.acs += Number(stats['average_combat_score'] ?? stats['acs'] ?? 0);
+                    acc.kast += Number(stats['kast'] ?? 0);
                 }
             }
             for (const [proPlayerId, acc] of playerStatsAccumulator.entries()) {
                 if (acc.gamesCount > 0) {
                     acc.acs = Math.round((acc.acs / acc.gamesCount) * 100) / 100;
+                    acc.kast = Math.round((acc.kast / acc.gamesCount) * 100) / 100;
                 }
                 await this.prisma.dayPerformance.upsert({
                     where: {
@@ -375,19 +404,21 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
             }
         }
     }
-    async upsertTeam(teamData, game) {
+    async upsertTeam(teamData, game, tournamentId) {
         const team = await this.prisma.team.upsert({
             where: { id: teamData.id.toString() },
             update: {
                 name: teamData.name,
                 acronym: teamData.acronym,
                 imageUrl: teamData.image_url,
+                location: teamData.location,
             },
             create: {
                 id: teamData.id.toString(),
                 name: teamData.name,
                 acronym: teamData.acronym,
                 imageUrl: teamData.image_url,
+                location: teamData.location,
                 game,
             },
             include: {
@@ -398,13 +429,78 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
             Date.now() - team.updatedAt.getTime() > 7 * 24 * 60 * 60 * 1000;
         if (shouldFetchPlayers) {
             this.logger.log(`Scheduling players fetch for team ${team.name} (${team.id})...`);
-            this.fetchPlayersForTeam(team.id, game).catch((e) => {
+            const fetchPromise = tournamentId
+                ? this.fetchPlayersForTournament(team.id, tournamentId, game)
+                : this.fetchPlayersForTeam(team.id, game);
+            fetchPromise.catch((e) => {
                 if (e instanceof Error) {
                     this.logger.error(`Failed to fetch players background job for ${team.name}: ${e.message}`);
                 }
             });
         }
         return team;
+    }
+    async fetchPlayersForTournament(teamId, tournamentId, game) {
+        const token = process.env.PANDASCORE_API_TOKEN;
+        if (!token)
+            return;
+        try {
+            const res = await axios.get(`${this.baseUrl}/tournaments/${tournamentId}/rosters`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const rostersData = res.data?.rosters || [];
+            const teamRoster = rostersData.find((r) => r.id.toString() === teamId);
+            if (!teamRoster || !teamRoster.players) {
+                return this.fetchPlayersForTeam(teamId, game);
+            }
+            const playersData = teamRoster.players;
+            await this.prisma.team.update({
+                where: { id: teamId },
+                data: { updatedAt: new Date() },
+            });
+            const existingPlayers = await this.prisma.proPlayer.findMany({
+                where: { teamId },
+            });
+            const activePlayerIds = new Set(playersData.map(p => p.id.toString()));
+            for (const ep of existingPlayers) {
+                if (!activePlayerIds.has(ep.id)) {
+                    await this.prisma.proPlayer.update({
+                        where: { id: ep.id },
+                        data: { isActive: false },
+                    });
+                }
+            }
+            for (const playerData of playersData) {
+                const role = playerData.role || 'Player';
+                await this.prisma.proPlayer.upsert({
+                    where: { id: playerData.id.toString() },
+                    update: {
+                        name: playerData.name,
+                        role,
+                        imageUrl: playerData.image_url,
+                        nationality: playerData.nationality,
+                        isActive: true,
+                        teamId,
+                    },
+                    create: {
+                        id: playerData.id.toString(),
+                        name: playerData.name,
+                        role,
+                        imageUrl: playerData.image_url,
+                        nationality: playerData.nationality,
+                        isActive: true,
+                        teamId,
+                        game,
+                    },
+                });
+            }
+        }
+        catch (e) {
+            if (e instanceof Error) {
+                this.logger.error(`Failed to fetch tournament roster: ${e.message}`);
+                return this.fetchPlayersForTeam(teamId, game);
+            }
+        }
     }
     async fetchPlayersForTeam(teamId, game) {
         const token = process.env.PANDASCORE_API_TOKEN;
@@ -428,6 +524,7 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         name: playerData.name,
                         role,
                         imageUrl: playerData.image_url,
+                        nationality: playerData.nationality,
                         isActive: playerData.active,
                     },
                     create: {
@@ -437,6 +534,7 @@ let PandaScoreService = PandaScoreService_1 = class PandaScoreService {
                         game,
                         role,
                         imageUrl: playerData.image_url,
+                        nationality: playerData.nationality,
                         isActive: playerData.active,
                     },
                 });

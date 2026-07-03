@@ -18,6 +18,7 @@ let CsScoringStrategy = class CsScoringStrategy {
         const mvpStars = Number(rawStats['mvpStars'] ?? 0);
         const bombPlants = Number(rawStats['bombPlants'] ?? 0);
         const bombDefusals = Number(rawStats['bombDefusals'] ?? 0);
+        const kast = Number(rawStats['kast'] ?? 0);
         const mapWin = Boolean(rawStats['mapWin']);
         score += kills * 3.0;
         score += deaths * -1.0;
@@ -27,6 +28,7 @@ let CsScoringStrategy = class CsScoringStrategy {
         score += mvpStars * 2.0;
         score += bombPlants * 0.5;
         score += bombDefusals * 1.0;
+        score += kast * 0.1;
         if (mapWin)
             score += 5.0;
         return Math.round(score * 100) / 100;

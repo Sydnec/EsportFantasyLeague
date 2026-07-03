@@ -1,5 +1,14 @@
+import { useNavigate } from 'react-router-dom';
 
 export function MatchMiniCard({ match }: { match: any }) {
+  const navigate = useNavigate();
+  const isClickable = match.status === 'running' || match.status === 'finished';
+  
+  const handleClick = () => {
+    if (isClickable) {
+      navigate(`/matches/${match.id}`);
+    }
+  };
   const schedDate = new Date(match.scheduledAt);
   const nowDate = new Date();
   const timeStr = schedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -12,7 +21,11 @@ export function MatchMiniCard({ match }: { match: any }) {
   }
 
   return (
-    <div className="match-mini-card no-hover" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-light)', marginBottom: 0 }}>
+    <div 
+      className={`match-mini-card ${isClickable ? 'clickable' : 'no-hover'}`} 
+      style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-light)', marginBottom: 0, cursor: isClickable ? 'pointer' : 'default' }}
+      onClick={handleClick}
+    >
       <div className="match-team left">
         {match.teamA.imageUrl && <img src={match.teamA.imageUrl} alt={match.teamA.name} className="match-team-logo" />}
         <span className="match-team-name">{match.teamA.acronym || match.teamA.name}</span>
