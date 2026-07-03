@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-backend"
 }
 
 enum Role {
@@ -118,9 +119,11 @@ model FantasyRoster {
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
 
-  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  league FantasyLeague @relation(fields: [fantasyLeagueId], references: [id], onDelete: Cascade)
-  picks  FantasyRosterPick[]
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league   FantasyLeague       @relation(fields: [fantasyLeagueId], references: [id], onDelete: Cascade)
+  matchDay EsportMatchDayCache @relation(fields: [esportMatchDayId], references: [id])
+  
+  picks    FantasyRosterPick[]
 
   @@unique([userId, fantasyLeagueId, esportMatchDayId])
   @@map("fantasy_rosters")
@@ -133,7 +136,8 @@ model FantasyRosterPick {
   pickOrder       Int      @map("pick_order")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  roster    FantasyRoster @relation(fields: [fantasyRosterId], references: [id], onDelete: Cascade)
+  roster       FantasyRoster     @relation(fields: [fantasyRosterId], references: [id], onDelete: Cascade)
+  esportPlayer EsportPlayerCache @relation(fields: [esportPlayerId], references: [id])
 
   @@unique([fantasyRosterId, esportPlayerId])
   @@map("fantasy_roster_picks")
@@ -175,7 +179,7 @@ model EsportTeamCache {
 }
 
 model EsportPlayerCache {
-  id           String   @id // ID d'origine de l'EsportPlayer
+  id           String   @id
   name         String
   esportTeamId String?  @map("esport_team_id")
   game         Game
@@ -184,16 +188,20 @@ model EsportPlayerCache {
   isActive     Boolean  @map("is_active")
   updatedAt    DateTime @map("updated_at")
 
+  picks        FantasyRosterPick[]
+
   @@map("esport_players_cache")
 }
 
 model EsportMatchDayCache {
-  id        String               @id // ID d'origine de l'EsportMatchDay
+  id        String               @id
   date      DateTime             @db.Date
   game      Game
   lockTime  DateTime             @map("lock_time")
   status    EsportMatchDayStatus @map("status")
   updatedAt DateTime             @map("updated_at")
+
+  rosters   FantasyRoster[]
 
   @@map("esport_match_days_cache")
 }

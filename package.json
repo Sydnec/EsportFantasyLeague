@@ -1,0 +1,12 @@
+{
+  "name": "esport-fantasy-league-root",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "services"
+  ],
+  "allowScripts": {
+    "unrs-resolver": true,
+    "fsevents@2.3.3": true
+  }
+}

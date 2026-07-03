@@ -6,11 +6,13 @@ services:
     image: postgres:15-alpine
     # Charge les variables de BDD (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB) depuis le .env du backend
     env_file:
-      - ./services/backend/.env
+      - ./services/apps/backend/.env
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+      # Ajout : Exécute le script au premier démarrage pour créer les schémas
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-admin} -d $${POSTGRES_DB:-fantasy_league}" ]
       interval: 5s
@@ -23,7 +25,7 @@ services:
     image: rabbitmq:3-management-alpine
     # Charge les variables administratives (RABBITMQ_DEFAULT_USER, RABBITMQ_DEFAULT_PASS) depuis le .env du backend
     env_file:
-      - ./services/backend/.env
+      - ./services/apps/backend/.env
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -40,12 +42,12 @@ services:
   # ──────────────────────────────────────────────
   gateway:
     build:
-      context: ./services/gateway
+      context: ./services/apps/gateway
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     env_file:
-      - ./services/gateway/.env
+      - ./services/apps/gateway/.env
     depends_on:
       backend:
         condition: service_started
@@ -56,10 +58,10 @@ services:
 
   backend:
     build:
-      context: ./services/backend
+      context: ./services/apps/backend
       dockerfile: Dockerfile
     env_file:
-      - ./services/backend/.env
+      - ./services/apps/backend/.env
     depends_on:
       db:
         condition: service_healthy
@@ -70,10 +72,10 @@ services:
 
   esport-adapter:
     build:
-      context: ./services/esport-adapter
+      context: ./services/apps/esport-adapter
       dockerfile: Dockerfile
     env_file:
-      - ./services/esport-adapter/.env
+      - ./services/apps/esport-adapter/.env
     depends_on:
       db:
         condition: service_healthy
@@ -84,10 +86,10 @@ services:
 
   scoring:
     build:
-      context: ./services/scoring
+      context: ./services/apps/scoring
       dockerfile: Dockerfile
     env_file:
-      - ./services/scoring/.env
+      - ./services/apps/scoring/.env
     depends_on:
       rabbitmq:
         condition: service_healthy

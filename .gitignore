@@ -16,7 +16,4 @@ yarn-error.log
 .docker/
 
 # Local-only dev dashboard
-/dev-dashboard/
-/dev-dashboard/dist/
-
-docs/*_PLAN.md
+dev-dashboard/
