@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { EsportAdapterController } from './esport-adapter.controller';
-import { EsportAdapterService } from './esport-adapter.service';
+import { EsportModule } from './esport/esport.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [],
-  controllers: [EsportAdapterController],
-  providers: [EsportAdapterService],
+  imports: [PrismaModule, EsportModule],
+  controllers: [],
+  providers: [],
 })
 export class EsportAdapterModule {}

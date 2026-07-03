@@ -1,6 +1,6 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // on réutilisera la même URL, mais les tables sont préfixées par esport_ ou dans un schéma dédié
 }
 
 generator client {
@@ -21,12 +21,8 @@ enum EsportMatchDayStatus {
   SCORED
 }
 
-// ──────────────────────────────────────────────
-// ÉQUIPES RÉELLES
-// ──────────────────────────────────────────────
-
 model EsportTeam {
-  id        String   @id @default(cuid())
+  id        String   @id // Pandascore ID (e.g., team_1234)
   name      String
   acronym   String?
   imageUrl  String?  @map("image_url")
@@ -34,38 +30,27 @@ model EsportTeam {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  players   EsportPlayer[]
-  matchesA  EsportMatch[]  @relation("TeamA")
-  matchesB  EsportMatch[]  @relation("TeamB")
-  wonMatches EsportMatch[] @relation("MatchWinner")
+  players EsportPlayer[]
 
   @@map("esport_teams")
 }
 
-// ──────────────────────────────────────────────
-// JOUEURS PROFESSIONNELS RÉELS
-// ──────────────────────────────────────────────
-
 model EsportPlayer {
-  id           String                            @id @default(cuid())
+  id           String   @id // Pandascore ID (e.g., player_5678)
   name         String
-  esportTeamId String?                           @map("esport_team_id")
+  esportTeamId String?  @map("esport_team_id")
   game         Game
   role         String
-  imageUrl     String?                           @map("image_url")
-  isActive     Boolean                           @default(true) @map("is_active")
-  createdAt    DateTime                          @default(now()) @map("created_at")
-  updatedAt    DateTime                          @updatedAt @map("updated_at")
+  imageUrl     String?  @map("image_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  team         EsportTeam?                       @relation(fields: [esportTeamId], references: [id])
+  team         EsportTeam? @relation(fields: [esportTeamId], references: [id], onDelete: SetNull)
   performances EsportPlayerMatchDayPerformance[]
 
   @@map("esport_players")
 }
-
-// ──────────────────────────────────────────────
-// JOURNÉES DE MATCH ET MATCHS RÉELS (CALENDRIER)
-// ──────────────────────────────────────────────
 
 model EsportMatchDay {
   id        String               @id @default(cuid())
@@ -76,53 +61,39 @@ model EsportMatchDay {
   createdAt DateTime             @default(now()) @map("created_at")
   updatedAt DateTime             @updatedAt @map("updated_at")
 
-  matches      EsportMatch[]                     @relation("MatchDayMatches")
+  matches      EsportMatch[]
   performances EsportPlayerMatchDayPerformance[]
 
-  @@unique([date, game])
   @@map("esport_match_days")
 }
 
 model EsportMatch {
-  id                String         @id @default(cuid())
-  esportMatchDayId  String         @map("esport_match_day_id")
-  esportTeamAId     String         @map("esport_team_a_id")
-  esportTeamBId     String         @map("esport_team_b_id")
-  winnerEsportTeamId String?       @map("winner_esport_team_id")
-  scheduledAt       DateTime       @map("scheduled_at")
-  status            String         @default("not_started")
-  esportTeamAScore  Int?           @map("esport_team_a_score")
-  esportTeamBScore  Int?           @map("esport_team_b_score")
-  esportLeagueName  String?        @map("esport_league_name")
-  games             Json?
-  finishedAt        DateTime?      @map("finished_at")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
+  id               String         @id // Pandascore ID (e.g., match_999)
+  esportMatchDayId String         @map("esport_match_day_id")
+  name             String
+  status           String         // "not_started", "running", "finished"
+  beginAt          DateTime?      @map("begin_at")
+  endAt            DateTime?      @map("end_at")
+  game             Game
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
-  matchDay EsportMatchDay @relation("MatchDayMatches", fields: [esportMatchDayId], references: [id], onDelete: Cascade)
-  teamA    EsportTeam     @relation("TeamA", fields: [esportTeamAId], references: [id])
-  teamB    EsportTeam     @relation("TeamB", fields: [esportTeamBId], references: [id])
-  winner   EsportTeam?    @relation("MatchWinner", fields: [winnerEsportTeamId], references: [id])
+  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
 
   @@map("esport_matches")
 }
 
-// ──────────────────────────────────────────────
-// STATISTIQUES DES JOUEURS SUR UN MATCH / JOURNÉE
-// ──────────────────────────────────────────────
-
 model EsportPlayerMatchDayPerformance {
-  id                   String   @id @default(cuid())
-  esportMatchDayId     String   @map("esport_match_day_id")
-  esportPlayerId       String   @map("esport_player_id")
-  rawStats             Json     @map("raw_stats")
-  calculatedFantasyScore Float?  @map("calculated_fantasy_score")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  esportPlayerId   String   @map("esport_player_id")
+  esportMatchDayId String   @map("esport_match_day_id")
+  rawStats         Json     @map("raw_stats")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
   player   EsportPlayer   @relation(fields: [esportPlayerId], references: [id], onDelete: Cascade)
+  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
 
-  @@unique([esportMatchDayId, esportPlayerId])
+  @@unique([esportPlayerId, esportMatchDayId])
   @@map("esport_player_match_day_performances")
 }
