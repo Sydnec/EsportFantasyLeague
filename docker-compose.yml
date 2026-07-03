@@ -1,33 +1,102 @@
 services:
+  # ──────────────────────────────────────────────
+  # INFRASTRUCTURE
+  # ──────────────────────────────────────────────
   db:
     image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: ${ESFL_DB_USER:-admin}
-      POSTGRES_PASSWORD: ${ESFL_DB_PASSWORD:-password}
-      POSTGRES_DB: ${ESFL_DB_NAME:-fantasy_league}
+    # Charge les variables de BDD (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB) depuis le .env du backend
+    env_file:
+      - ./services/backend/.env
     ports:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${ESFL_DB_USER:-admin} -d ${ESFL_DB_NAME:-fantasy_league}" ]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-admin} -d $${POSTGRES_DB:-fantasy_league}" ]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - esfl-network
 
-  backend:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    # Charge les variables administratives (RABBITMQ_DEFAULT_USER, RABBITMQ_DEFAULT_PASS) depuis le .env du backend
+    env_file:
+      - ./services/backend/.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - esfl-network
+
+  # ──────────────────────────────────────────────
+  # SERVICES APPLICATIFS
+  # ──────────────────────────────────────────────
+  gateway:
     build:
-      context: ./backend
+      context: ./services/gateway
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     env_file:
-      - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql://${ESFL_DB_USER:-admin}:${ESFL_DB_PASSWORD:-password}@db:5432/${ESFL_DB_NAME:-fantasy_league}?schema=public
+      - ./services/gateway/.env
+    depends_on:
+      backend:
+        condition: service_started
+      esport-adapter:
+        condition: service_started
+    networks:
+      - esfl-network
+
+  backend:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/backend/.env
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - esfl-network
+
+  esport-adapter:
+    build:
+      context: ./services/esport-adapter
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/esport-adapter/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - esfl-network
+
+  scoring:
+    build:
+      context: ./services/scoring
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/scoring/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - esfl-network
 
 volumes:
   db_data:
+
+networks:
+  esfl-network:
+    driver: bridge

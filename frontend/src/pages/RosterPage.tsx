@@ -77,7 +77,8 @@ export function RosterPage() {
             return md.matches.some((m: any) => {
               const isAllSelected = l.tournaments.includes(`ALL:${md.game}`);
               if (isAllSelected) return true;
-              return l.tournaments.includes(m.tournamentName || '');
+              const leagueName = m.tournamentName?.split(' / ')[0];
+              return l.tournaments.includes(leagueName || '');
             });
           })
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

@@ -1,0 +1,127 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Game {
+  LEAGUE_OF_LEGENDS
+  COUNTER_STRIKE
+  ROCKET_LEAGUE
+  VALORANT
+}
+
+enum EsportMatchDayStatus {
+  OPEN
+  LOCKED
+  SCORED
+}
+
+// ──────────────────────────────────────────────
+// ÉQUIPES RÉELLES
+// ──────────────────────────────────────────────
+
+model EsportTeam {
+  id        String   @id @default(cuid())
+  name      String
+  acronym   String?
+  imageUrl  String?  @map("image_url")
+  game      Game
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  players   EsportPlayer[]
+  matchesA  EsportMatch[]  @relation("TeamA")
+  matchesB  EsportMatch[]  @relation("TeamB")
+  wonMatches EsportMatch[] @relation("MatchWinner")
+
+  @@map("esport_teams")
+}
+
+// ──────────────────────────────────────────────
+// JOUEURS PROFESSIONNELS RÉELS
+// ──────────────────────────────────────────────
+
+model EsportPlayer {
+  id           String                            @id @default(cuid())
+  name         String
+  esportTeamId String?                           @map("esport_team_id")
+  game         Game
+  role         String
+  imageUrl     String?                           @map("image_url")
+  isActive     Boolean                           @default(true) @map("is_active")
+  createdAt    DateTime                          @default(now()) @map("created_at")
+  updatedAt    DateTime                          @updatedAt @map("updated_at")
+
+  team         EsportTeam?                       @relation(fields: [esportTeamId], references: [id])
+  performances EsportPlayerMatchDayPerformance[]
+
+  @@map("esport_players")
+}
+
+// ──────────────────────────────────────────────
+// JOURNÉES DE MATCH ET MATCHS RÉELS (CALENDRIER)
+// ──────────────────────────────────────────────
+
+model EsportMatchDay {
+  id        String               @id @default(cuid())
+  date      DateTime             @db.Date
+  game      Game
+  lockTime  DateTime             @map("lock_time")
+  status    EsportMatchDayStatus @default(OPEN)
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  matches      EsportMatch[]                     @relation("MatchDayMatches")
+  performances EsportPlayerMatchDayPerformance[]
+
+  @@unique([date, game])
+  @@map("esport_match_days")
+}
+
+model EsportMatch {
+  id                String         @id @default(cuid())
+  esportMatchDayId  String         @map("esport_match_day_id")
+  esportTeamAId     String         @map("esport_team_a_id")
+  esportTeamBId     String         @map("esport_team_b_id")
+  winnerEsportTeamId String?       @map("winner_esport_team_id")
+  scheduledAt       DateTime       @map("scheduled_at")
+  status            String         @default("not_started")
+  esportTeamAScore  Int?           @map("esport_team_a_score")
+  esportTeamBScore  Int?           @map("esport_team_b_score")
+  esportLeagueName  String?        @map("esport_league_name")
+  games             Json?
+  finishedAt        DateTime?      @map("finished_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  matchDay EsportMatchDay @relation("MatchDayMatches", fields: [esportMatchDayId], references: [id], onDelete: Cascade)
+  teamA    EsportTeam     @relation("TeamA", fields: [esportTeamAId], references: [id])
+  teamB    EsportTeam     @relation("TeamB", fields: [esportTeamBId], references: [id])
+  winner   EsportTeam?    @relation("MatchWinner", fields: [winnerEsportTeamId], references: [id])
+
+  @@map("esport_matches")
+}
+
+// ──────────────────────────────────────────────
+// STATISTIQUES DES JOUEURS SUR UN MATCH / JOURNÉE
+// ──────────────────────────────────────────────
+
+model EsportPlayerMatchDayPerformance {
+  id                   String   @id @default(cuid())
+  esportMatchDayId     String   @map("esport_match_day_id")
+  esportPlayerId       String   @map("esport_player_id")
+  rawStats             Json     @map("raw_stats")
+  calculatedFantasyScore Float?  @map("calculated_fantasy_score")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
+  player   EsportPlayer   @relation(fields: [esportPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([esportMatchDayId, esportPlayerId])
+  @@map("esport_player_match_day_performances")
+}

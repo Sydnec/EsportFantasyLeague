@@ -18,3 +18,5 @@ yarn-error.log
 # Local-only dev dashboard
 /dev-dashboard/
 /dev-dashboard/dist/
+
+docs/*_PLAN.md

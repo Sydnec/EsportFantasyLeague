@@ -1,0 +1,199 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Game {
+  LEAGUE_OF_LEGENDS
+  COUNTER_STRIKE
+  ROCKET_LEAGUE
+  VALORANT
+}
+
+enum FantasyRosterStatus {
+  PENDING
+  LOCKED
+  SCORED
+}
+
+enum EsportMatchDayStatus {
+  OPEN
+  LOCKED
+  SCORED
+}
+
+// ──────────────────────────────────────────────
+// UTILISATEURS & LIENS DE SESSION
+// ──────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  passwordHash  String?  @map("password_hash")
+  googleId      String?  @unique @map("google_id")
+  avatarUrl     String?  @map("avatar_url")
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  leagueMemberships FantasyLeagueMember[]
+  rosters           FantasyRoster[]
+  auditLogs         UserActionAuditLog[]
+  refreshTokens     UserRefreshToken[]
+
+  @@map("users")
+}
+
+model UserRefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_refresh_tokens")
+}
+
+// ──────────────────────────────────────────────
+// LIGUES & MEMBRES
+// ──────────────────────────────────────────────
+
+model FantasyLeague {
+  id              String   @id @default(cuid())
+  name            String
+  games           Game[]   @default([])
+  tournaments     String[] @default([])
+  rosterSize      Int      @map("roster_size")
+  cooldownDays    Int      @map("cooldown_days")
+  inviteCode      String   @unique @map("invite_code")
+  maxMembers      Int      @default(12) @map("max_members")
+  createdByUserId String   @map("created_by_user_id")
+  onlyCreatorInvites Boolean  @default(false) @map("only_creator_invites")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  members   FantasyLeagueMember[]
+  rosters   FantasyRoster[]
+
+  @@map("fantasy_leagues")
+}
+
+model FantasyLeagueMember {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  fantasyLeagueId String   @map("fantasy_league_id")
+  totalScore      Float    @default(0) @map("total_score")
+  joinedAt        DateTime @default(now()) @map("joined_at")
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league FantasyLeague @relation(fields: [fantasyLeagueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fantasyLeagueId])
+  @@map("fantasy_league_members")
+}
+
+// ──────────────────────────────────────────────
+// ROSTERS & PICKS (GAMEPLAY FANTASY)
+// ──────────────────────────────────────────────
+
+model FantasyRoster {
+  id                   String              @id @default(cuid())
+  userId               String              @map("user_id")
+  fantasyLeagueId      String              @map("fantasy_league_id")
+  esportMatchDayId     String              @map("esport_match_day_id")
+  status               FantasyRosterStatus @default(PENDING)
+  calculatedRosterScore Float?             @map("calculated_roster_score")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league FantasyLeague @relation(fields: [fantasyLeagueId], references: [id], onDelete: Cascade)
+  picks  FantasyRosterPick[]
+
+  @@unique([userId, fantasyLeagueId, esportMatchDayId])
+  @@map("fantasy_rosters")
+}
+
+model FantasyRosterPick {
+  id              String   @id @default(cuid())
+  fantasyRosterId String   @map("fantasy_roster_id")
+  esportPlayerId  String   @map("esport_player_id")
+  pickOrder       Int      @map("pick_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  roster    FantasyRoster @relation(fields: [fantasyRosterId], references: [id], onDelete: Cascade)
+
+  @@unique([fantasyRosterId, esportPlayerId])
+  @@map("fantasy_roster_picks")
+}
+
+// ──────────────────────────────────────────────
+// SECURITÉ & AUDIT
+// ──────────────────────────────────────────────
+
+model UserActionAuditLog {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("user_action_audit_logs")
+}
+
+// ──────────────────────────────────────────────
+// TABLES CACHES (Lecture seule, répliquées par RabbitMQ)
+// ──────────────────────────────────────────────
+
+model EsportTeamCache {
+  id        String   @id // ID d'origine de l'EsportTeam
+  name      String
+  acronym   String?
+  imageUrl  String?  @map("image_url")
+  game      Game
+  updatedAt DateTime @map("updated_at")
+
+  @@map("esport_teams_cache")
+}
+
+model EsportPlayerCache {
+  id           String   @id // ID d'origine de l'EsportPlayer
+  name         String
+  esportTeamId String?  @map("esport_team_id")
+  game         Game
+  role         String
+  imageUrl     String?  @map("image_url")
+  isActive     Boolean  @map("is_active")
+  updatedAt    DateTime @map("updated_at")
+
+  @@map("esport_players_cache")
+}
+
+model EsportMatchDayCache {
+  id        String               @id // ID d'origine de l'EsportMatchDay
+  date      DateTime             @db.Date
+  game      Game
+  lockTime  DateTime             @map("lock_time")
+  status    EsportMatchDayStatus @map("status")
+  updatedAt DateTime             @map("updated_at")
+
+  @@map("esport_match_days_cache")
+}
