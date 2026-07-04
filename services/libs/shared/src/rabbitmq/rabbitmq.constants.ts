@@ -2,6 +2,8 @@ export const RABBITMQ_EXCHANGE = 'esfl.topic';
 
 export const RABBITMQ_ROUTING_KEYS = {
   ESPORT_PLAYER_UPSERTED: 'esport.player.upserted',
+  ESPORT_TEAM_UPSERTED: 'esport.team.upserted',
+  ESPORT_MATCHDAY_UPSERTED: 'esport.matchday.upserted',
   ESPORT_PERFORMANCE_INGESTED: 'esport.performance.ingested',
   SCORING_POINTS_CALCULATED: 'scoring.points.calculated',
 };
