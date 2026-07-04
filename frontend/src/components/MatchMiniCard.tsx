@@ -27,8 +27,8 @@ export function MatchMiniCard({ match }: { match: any }) {
       onClick={handleClick}
     >
       <div className="match-team left">
-        {match.teamA.imageUrl && <img src={match.teamA.imageUrl} alt={match.teamA.name} className="match-team-logo" />}
-        <span className="match-team-name">{match.teamA.acronym || match.teamA.name}</span>
+        {match.teamA?.imageUrl && <img src={match.teamA.imageUrl} alt={match.teamA.name} className="match-team-logo" />}
+        <span className="match-team-name">{match.teamA?.acronym || match.teamA?.name || 'TBD'}</span>
       </div>
       <div className="match-mini-details">
         {match.status !== 'finished' && match.status !== 'canceled' && (
@@ -53,8 +53,8 @@ export function MatchMiniCard({ match }: { match: any }) {
         )}
       </div>
       <div className="match-team right">
-        <span className="match-team-name">{match.teamB.acronym || match.teamB.name}</span>
-        {match.teamB.imageUrl && <img src={match.teamB.imageUrl} alt={match.teamB.name} className="match-team-logo" />}
+        <span className="match-team-name">{match.teamB?.acronym || match.teamB?.name || 'TBD'}</span>
+        {match.teamB?.imageUrl && <img src={match.teamB.imageUrl} alt={match.teamB.name} className="match-team-logo" />}
       </div>
     </div>
   );
