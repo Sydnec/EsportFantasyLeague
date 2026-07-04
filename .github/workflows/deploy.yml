@@ -1,0 +1,65 @@
+name: Deploy Microservices
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - services/**
+      - docker-compose.yml
+      - .github/workflows/deploy.yml
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare environment files
+        run: |
+          # 1. Config Backend Service (Inclut la config db & rabbitmq lue par les conteneurs d'infra)
+          mkdir -p services/backend
+          cat > services/backend/.env <<'EOF'
+          PORT=3001
+          DATABASE_URL=postgresql://${{ secrets.ESFL_DB_USER }}:${{ secrets.ESFL_DB_PASSWORD }}@db:5432/${{ secrets.ESFL_DB_NAME }}?schema=backend_db
+          POSTGRES_USER=${{ secrets.ESFL_DB_USER }}
+          POSTGRES_PASSWORD=${{ secrets.ESFL_DB_PASSWORD }}
+          POSTGRES_DB=${{ secrets.ESFL_DB_NAME }}
+          RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672
+          RABBITMQ_DEFAULT_USER=${{ secrets.RABBITMQ_DEFAULT_USER }}
+          RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          JWT_SECRET=${{ secrets.BACKEND_JWT_SECRET }}
+          GOOGLE_CLIENT_ID=${{ secrets.BACKEND_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.BACKEND_GOOGLE_CLIENT_SECRET }}
+          GOOGLE_CALLBACK_URL=${{ secrets.BACKEND_GOOGLE_CALLBACK_URL }}
+          FRONTEND_URL=${{ secrets.BACKEND_FRONTEND_URL }}
+          EOF
+
+          # 2. Config Esport Adapter Service
+          mkdir -p services/esport-adapter
+          cat > services/esport-adapter/.env <<'EOF'
+          PORT=3002
+          DATABASE_URL=postgresql://${{ secrets.ESFL_DB_USER }}:${{ secrets.ESFL_DB_PASSWORD }}@db:5432/${{ secrets.ESFL_DB_NAME }}?schema=esport_db
+          RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672
+          PANDASCORE_API_TOKEN=${{ secrets.ESPORT_PANDASCORE_API_TOKEN }}
+          EOF
+
+          # 3. Config Scoring Service
+          mkdir -p services/scoring
+          cat > services/scoring/.env <<'EOF'
+          RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672
+          EOF
+
+          # 4. Config API Gateway
+          mkdir -p services/gateway
+          cat > services/gateway/.env <<'EOF'
+          PORT=3000
+          BACKEND_SERVICE_URL=http://backend:3001
+          ESPORT_SERVICE_URL=http://esport-adapter:3002
+          EOF
+
+      - name: Deploy with Docker Compose
+        run: docker compose up -d --build --remove-orphans

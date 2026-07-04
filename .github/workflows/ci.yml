@@ -11,15 +11,17 @@ on:
       - dev
 
 jobs:
-  backend:
-    name: Backend
+  build-services:
+    name: Build Service - ${{ matrix.service }}
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgresql://prisma:prisma@localhost:5432/prisma?schema=public
+    strategy:
+      matrix:
+        service: [backend, esport-adapter, scoring, gateway]
+      fail-fast: false
 
     defaults:
       run:
-        working-directory: backend
+        working-directory: services/${{ matrix.service }}
 
     steps:
       - name: Checkout repository
@@ -30,10 +32,23 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Check directory existence
+        id: check-dir
+        run: |
+          if [ -d "." ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Service directory services/${{ matrix.service }} does not exist yet. Skipping."
+          fi
+        shell: bash
 
       - name: Install dependencies
+        if: steps:check-dir.outputs.exists == 'true'
         run: npm ci
 
-      - name: Build backend
+      - name: Build service
+        if: steps:check-dir.outputs.exists == 'true'
         run: npm run build

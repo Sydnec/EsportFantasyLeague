@@ -29,25 +29,31 @@ export function DashboardPage() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const todayStr = new Date().toLocaleDateString('en-CA');
-
   const getMissingRostersCount = (league: League) => {
-    const todayMatchDays = matchDays.filter(md => {
-      const isToday = new Date(md.date).toLocaleDateString('en-CA') === todayStr;
-      if (!isToday || md.status !== 'OPEN' || !league.games.includes(md.game)) return false;
-      
+    const now = Date.now();
+    const in24h = now + 24 * 60 * 60 * 1000;
+
+    // Only flag a match day that's actually about to lock (within 24h) — a
+    // day merely dated "today" but locking next week isn't urgent yet, and
+    // one whose lockTime already passed isn't actionable anymore either.
+    const urgentMatchDays = matchDays.filter(md => {
+      if (md.status !== 'OPEN' || !league.games.includes(md.game)) return false;
+      const lockTime = new Date(md.lockTime).getTime();
+      if (lockTime <= now || lockTime > in24h) return false;
+
       const hasAllowedMatches = md.matches && md.matches.some((match: any) => {
         const isAllSelected = league.tournaments.includes(`ALL:${md.game}`);
         if (isAllSelected) return true;
-        return league.tournaments.includes(match.tournamentName);
+        const leagueName = match.tournamentName?.split(' / ')[0];
+        return league.tournaments.includes(leagueName || '');
       });
-      
+
       return hasAllowedMatches;
     });
-    
-    if (todayMatchDays.length === 0) return 0;
 
-    const hasRoster = todayMatchDays.some(md => rosters.some(r => r.league.id === league.id && r.matchDay.id === md.id));
+    if (urgentMatchDays.length === 0) return 0;
+
+    const hasRoster = urgentMatchDays.some(md => rosters.some(r => r.league.id === league.id && r.matchDay.id === md.id));
     return hasRoster ? 0 : 1;
   };
 

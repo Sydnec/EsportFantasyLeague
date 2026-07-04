@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { MatchGroupList } from './MatchGroupList';
+import { isInRecentResultsWindow } from '../utils/matchWindow';
 import './MatchesSection.css';
 
 export function RecentResultsSection({
@@ -17,17 +18,7 @@ export function RecentResultsSection({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const filteredMatchDays = useMemo(() => {
-    const today = new Date();
-    const todayStr = today.toLocaleDateString('en-CA');
-    
-    const jMinus2 = new Date(today);
-    jMinus2.setDate(jMinus2.getDate() - 2);
-    const jMinus2Str = jMinus2.toLocaleDateString('en-CA');
-
-    const pastDays = matchDays.filter((md: any) => {
-      const dateStr = md.date.split('T')[0];
-      return dateStr >= jMinus2Str && dateStr <= todayStr;
-    });
+    const pastDays = matchDays.filter((md: any) => isInRecentResultsWindow(md.date));
     const sorted = [...pastDays].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const grouped = sorted.reduce((acc: any, md: any) => {

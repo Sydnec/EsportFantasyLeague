@@ -6,6 +6,7 @@ import { matchDaysApi } from '../api/match-days';
 import { GAME_CONFIG } from '../constants/games';
 import { MatchesSection } from '../components/MatchesSection';
 import { RecentResultsSection } from '../components/RecentResultsSection';
+import { isMatchVisibleOnHome } from '../utils/matchWindow';
 import { type League } from '../types';
 import './HomePage.css';
 
@@ -100,7 +101,10 @@ export function HomePage() {
       }
       if (md.matches) {
         md.matches.forEach((m: any) => {
-          if (m.tournamentName) {
+          // Only offer a league in the filter if it actually has a match visible
+          // in "Prochains matchs" or "Resultats récents" below — otherwise the
+          // filter lists leagues with nothing to show for them.
+          if (m.tournamentName && isMatchVisibleOnHome(m, md.date)) {
             groups[game].add(m.tournamentName.split(' / ')[0]);
           }
         });
