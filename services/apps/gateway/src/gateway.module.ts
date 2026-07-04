@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { Request } from 'express';
 import { AuthMiddleware } from './auth.middleware';
 
 @Module({
@@ -16,9 +17,17 @@ export class GatewayModule implements NestModule {
     consumer.apply(AuthMiddleware).forRoutes('/api/v1/*path');
 
     // 2. Configurer les proxies pour le Backend Service (port 3001)
+    //
+    // Nest mounts path-scoped middleware the way Express does for `app.use(mountPath, ...)`:
+    // it strips the matched prefix from `req.url` before the middleware runs (e.g.
+    // `/api/v1/leagues/upcoming-tournaments` arrives here as `/upcoming-tournaments`).
+    // http-proxy-middleware forwards `req.url` as-is, so without `pathRewrite` every
+    // proxied request loses its prefix downstream and 404s. `req.originalUrl` still
+    // holds the untouched, full inbound path, so use that as the forwarded path.
     const backendProxy = createProxyMiddleware({
       target: 'http://localhost:3001',
       changeOrigin: true,
+      pathRewrite: (_path, req: Request) => req.originalUrl,
     });
 
     consumer
@@ -34,6 +43,7 @@ export class GatewayModule implements NestModule {
     const esportProxy = createProxyMiddleware({
       target: 'http://localhost:3002',
       changeOrigin: true,
+      pathRewrite: (_path, req: Request) => req.originalUrl,
     });
 
     // Substituted '/api/v1/esport/*' with '/api/v1/esport/*path'
