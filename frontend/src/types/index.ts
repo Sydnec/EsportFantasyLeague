@@ -25,6 +25,7 @@ export interface League {
   maxMembers: number;
   onlyCreatorInvites: boolean;
   createdById: string;
+  createdAt: string;
   members: LeagueMember[];
   _count?: { members: number };
 }
