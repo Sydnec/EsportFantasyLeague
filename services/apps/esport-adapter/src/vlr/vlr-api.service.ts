@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import * as cheerio from 'cheerio';
 import { catchError, firstValueFrom } from 'rxjs';
-import { DetailedPerformancesResult, GameDetail, PlayerPerformance, PlayerRef } from '../adapters/game-adapter.interface';
+import { DetailedPerformancesResult, GameDetail, PlayerRef } from '../adapters/game-adapter.interface';
 import { RateLimiter } from '../common/rate-limiter';
 
 /**
@@ -34,15 +34,15 @@ export class VlrApiService {
     players: PlayerRef[],
   ): Promise<DetailedPerformancesResult> {
     if (!teamAName || !teamBName) {
-      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — using mocked stats for all.`);
-      return { performances: this.mockAll(pandascoreMatchId, players) };
+      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — no performances to report.`);
+      return { performances: [] };
     }
 
     try {
       const matchPath = await this.findMatchPath(teamAName, teamBName, scheduledAt);
       if (!matchPath) {
         this.logger.warn(`No vlr.gg match found for ${teamAName} vs ${teamBName} around ${scheduledAt.toISOString()}.`);
-        return { performances: this.mockAll(pandascoreMatchId, players) };
+        return { performances: [] };
       }
 
       const html = await this.getHtml(matchPath);
@@ -52,15 +52,14 @@ export class VlrApiService {
       const games = this.extractGames($, teamAName, teamBName);
 
       if (!statsByName.size) {
-        this.logger.warn(`vlr.gg match found but no player stats extracted — using mocked stats for all.`);
-        return { performances: this.mockAll(pandascoreMatchId, players), games };
+        this.logger.warn(`vlr.gg match found but no player stats extracted — no performances to report.`);
+        return { performances: [], games };
       }
 
       // A registered roster player missing from a match we DID find almost
       // always means they were benched (e.g. Pandascore still lists them on
       // the roster but a substitute played) — real info worth 0 points, not a
-      // gap to paper over with a fabricated stat line. Only the "couldn't find
-      // the match at all" branch above mocks everyone; here, skip them.
+      // gap to paper over with a fabricated stat line, so skip them.
       const performances = players.flatMap((player) => {
         const stats = statsByName.get(this.normalizeName(player.name));
         if (stats) return [{ esportPlayerId: player.id, rawStats: stats }];
@@ -71,7 +70,7 @@ export class VlrApiService {
       return { performances, games };
     } catch (error: any) {
       this.logger.error(`vlr.gg lookup failed for match ${pandascoreMatchId}: ${error.message}`);
-      return { performances: this.mockAll(pandascoreMatchId, players) };
+      return { performances: [] };
     }
   }
 
@@ -257,38 +256,4 @@ export class VlrApiService {
     return (name ?? '').trim().toLowerCase();
   }
 
-  private mockAll(pandascoreMatchId: string, players: PlayerRef[]): PlayerPerformance[] {
-    return players.map((player) => ({
-      esportPlayerId: player.id,
-      rawStats: this.mockStats(pandascoreMatchId, player.id),
-    }));
-  }
-
-  private mockStats(matchId: string, playerId: string): Record<string, number> {
-    const rand = this.seededRandom(`${matchId}:${playerId}`);
-    return {
-      rating: Math.round((0.6 + rand() * 1.0) * 100) / 100,
-      kills: Math.floor(rand() * 25),
-      deaths: Math.floor(rand() * 20),
-      assists: Math.floor(rand() * 10),
-    };
-  }
-
-  // Deterministic PRNG (mulberry32) seeded from a string, so mocked stats stay
-  // stable across cron runs for a given match/player instead of pure Math.random().
-  private seededRandom(seed: string): () => number {
-    let h = 1779033703 ^ seed.length;
-    for (let i = 0; i < seed.length; i++) {
-      h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
-      h = (h << 13) | (h >>> 19);
-    }
-    let a = h >>> 0;
-    return () => {
-      a |= 0;
-      a = (a + 0x6d2b79f5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
 }

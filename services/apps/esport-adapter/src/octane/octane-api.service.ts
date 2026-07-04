@@ -36,27 +36,26 @@ export class OctaneApiService {
     players: PlayerRef[],
   ): Promise<PlayerPerformance[]> {
     if (!teamAName || !teamBName) {
-      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — using mocked stats for all.`);
-      return this.mockAll(pandascoreMatchId, players);
+      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — no performances to report.`);
+      return [];
     }
 
     try {
       const match = await this.findMatch(teamAName, teamBName, scheduledAt);
       if (!match) {
         this.logger.warn(`No octane.gg match found for ${teamAName} vs ${teamBName} around ${scheduledAt.toISOString()}.`);
-        return this.mockAll(pandascoreMatchId, players);
+        return [];
       }
 
       const statsByName = this.extractPlayerStats(match);
       if (!statsByName.size) {
-        this.logger.warn(`octane.gg match found but no player stats extracted — using mocked stats for all.`);
-        return this.mockAll(pandascoreMatchId, players);
+        this.logger.warn(`octane.gg match found but no player stats extracted — no performances to report.`);
+        return [];
       }
 
       // A registered roster player missing from a match we DID find almost
       // always means they were benched — real info (0 points), not a gap to
-      // paper over with a fabricated line. Only mock when the whole match
-      // lookup failed (above); here, skip them instead.
+      // paper over with a fabricated line, so skip them.
       return players.flatMap((player) => {
         const stats = statsByName.get(this.normalizeName(player.name));
         if (stats) return [{ esportPlayerId: player.id, rawStats: stats }];
@@ -65,10 +64,10 @@ export class OctaneApiService {
       });
     } catch (error: any) {
       // Covers both network failures and unexpected response shapes — a wrong
-      // guess about octane.gg's exact JSON structure degrades to mocked stats
+      // guess about octane.gg's exact JSON structure degrades to no performances
       // instead of breaking the whole stats-ingestion cron.
       this.logger.error(`octane.gg lookup failed for match ${pandascoreMatchId}: ${error.message}`);
-      return this.mockAll(pandascoreMatchId, players);
+      return [];
     }
   }
 
@@ -139,39 +138,4 @@ export class OctaneApiService {
     return (name ?? '').trim().toLowerCase();
   }
 
-  private mockAll(pandascoreMatchId: string, players: PlayerRef[]): PlayerPerformance[] {
-    return players.map((player) => ({
-      esportPlayerId: player.id,
-      rawStats: this.mockStats(pandascoreMatchId, player.id),
-    }));
-  }
-
-  private mockStats(matchId: string, playerId: string): Record<string, number> {
-    const rand = this.seededRandom(`${matchId}:${playerId}`);
-    return {
-      score: Math.floor(rand() * 500),
-      goals: Math.floor(rand() * 4),
-      assists: Math.floor(rand() * 3),
-      saves: Math.floor(rand() * 5),
-      shots: Math.floor(rand() * 6),
-    };
-  }
-
-  // Deterministic PRNG (mulberry32) seeded from a string, so mocked stats stay
-  // stable across cron runs for a given match/player instead of pure Math.random().
-  private seededRandom(seed: string): () => number {
-    let h = 1779033703 ^ seed.length;
-    for (let i = 0; i < seed.length; i++) {
-      h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
-      h = (h << 13) | (h >>> 19);
-    }
-    let a = h >>> 0;
-    return () => {
-      a |= 0;
-      a = (a + 0x6d2b79f5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
 }

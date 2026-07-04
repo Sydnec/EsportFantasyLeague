@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
-import { DetailedPerformancesResult, GameDetail, PlayerPerformance, PlayerRef } from '../adapters/game-adapter.interface';
+import { DetailedPerformancesResult, GameDetail, PlayerRef } from '../adapters/game-adapter.interface';
 import { RateLimiter } from '../common/rate-limiter';
 
 /**
@@ -32,14 +32,14 @@ export class LeaguepediaApiService {
     players: PlayerRef[],
   ): Promise<DetailedPerformancesResult> {
     if (!teamAName || !teamBName) {
-      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — using mocked stats for all.`);
-      return { performances: this.mockAll(pandascoreMatchId, players) };
+      this.logger.warn(`Missing team names for match ${pandascoreMatchId} — no performances to report.`);
+      return { performances: [] };
     }
 
     const found = await this.findMatchGames(teamAName, teamBName, scheduledAt);
     if (!found) {
       this.logger.warn(`No Leaguepedia match found for ${teamAName} vs ${teamBName} around ${scheduledAt.toISOString()}.`);
-      return { performances: this.mockAll(pandascoreMatchId, players) };
+      return { performances: [] };
     }
     const { matchId, games } = found;
 
@@ -51,8 +51,8 @@ export class LeaguepediaApiService {
     });
 
     if (!rows.length) {
-      this.logger.warn(`Leaguepedia match ${matchId} has no player rows — using mocked stats for all.`);
-      return { performances: this.mockAll(pandascoreMatchId, players), games };
+      this.logger.warn(`Leaguepedia match ${matchId} has no player rows — no performances to report.`);
+      return { performances: [], games };
     }
 
     // A Bo3/Bo5 series has one row per game per player — aggregate across the series.
@@ -71,9 +71,7 @@ export class LeaguepediaApiService {
 
     // A registered roster player with no row here almost always means they were
     // benched for this specific match — that's real information (0 fantasy
-    // points), not a gap to paper over with a fabricated stat line. Only the
-    // "we couldn't find the match at all" case above falls back to mocking
-    // everyone; here, skip them instead of inventing a plausible-looking lie.
+    // points), not a gap to paper over with a fabricated stat line, so skip them.
     const performances = players.flatMap((player) => {
       const stats = totalsByName.get(this.normalizeName(player.name));
       if (stats) return [{ esportPlayerId: player.id, rawStats: stats }];
@@ -192,38 +190,4 @@ export class LeaguepediaApiService {
     return (name ?? '').split('(')[0].trim().toLowerCase();
   }
 
-  private mockAll(pandascoreMatchId: string, players: PlayerRef[]): PlayerPerformance[] {
-    return players.map((player) => ({
-      esportPlayerId: player.id,
-      rawStats: this.mockStats(pandascoreMatchId, player.id),
-    }));
-  }
-
-  private mockStats(matchId: string, playerId: string): Record<string, number> {
-    const rand = this.seededRandom(`${matchId}:${playerId}`);
-    return {
-      kills: Math.floor(rand() * 12),
-      deaths: Math.floor(rand() * 8),
-      assists: Math.floor(rand() * 15),
-      creepScore: 100 + Math.floor(rand() * 250),
-    };
-  }
-
-  // Deterministic PRNG (mulberry32) seeded from a string, so mocked stats stay
-  // stable across cron runs for a given match/player instead of pure Math.random().
-  private seededRandom(seed: string): () => number {
-    let h = 1779033703 ^ seed.length;
-    for (let i = 0; i < seed.length; i++) {
-      h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
-      h = (h << 13) | (h >>> 19);
-    }
-    let a = h >>> 0;
-    return () => {
-      a |= 0;
-      a = (a + 0x6d2b79f5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
 }
