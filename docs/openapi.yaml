@@ -1,0 +1,1479 @@
+openapi: 3.0.3
+info:
+  title: Esport Fantasy League API
+  description: |
+    Cette documentation décrit les points d'entrée (endpoints) de l'API Gateway du projet **Esport Fantasy League**.
+
+    L'architecture est structurée autour d'un **API Gateway** (port 3000) qui centralise l'accès et route les requêtes vers les services sous-jacents :
+    - **Backend Service** (port 3001) : Authentification, gestion des comptes utilisateurs, gestion des ligues fantasy, gestion des rosters et de la draft fantasy.
+    - **Esport Data Adapter** (port 3002) : Centralisation et uniformisation des données réelles issues de l'API Pandascore et des API spécifiques de chaque jeu (League of Legends, Counter-Strike, Rocket League, Valorant).
+
+    Toutes les réponses de l'API sont enveloppées dans un objet de réponse standard (`ApiResponse`) contenant :
+    - `statusCode` : Le code HTTP de la réponse.
+    - `timestamp` : La date et l'heure ISO du traitement de la requête.
+    - `data` : La charge utile (payload) retournée.
+
+    ### Sécurité
+    La plupart des routes nécessitent une authentification via un jeton **JWT Bearer**. 
+    Pour le renouvellement de session, la route `/auth/refresh` attend le **Refresh Token** également sous forme de Bearer token dans les en-têtes Authorization.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: API Gateway (Version 1 - avec préfixe /api/v1)
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ────────────────────────────────────────────────────────────────────────
+  # AUTHENTICATION
+  # ────────────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      summary: Connexion utilisateur
+      description: Permet à un utilisateur de se connecter à l'aide de ses identifiants. Retourne un couple Access Token / Refresh Token.
+      security: []
+      tags:
+        - Authentification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: MySecr3tP@ssword
+      responses:
+        "200":
+          description: Connexion réussie. Retourne les tokens.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseAuth"
+        "401":
+          description: Identifiants incorrects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/register:
+    post:
+      summary: Inscription utilisateur
+      description: Permet à un nouvel utilisateur de s'enregistrer avec son adresse email, un nom d'utilisateur et un mot de passe.
+      security: []
+      tags:
+        - Authentification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - username
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                username:
+                  type: string
+                  example: EsportMaster
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: MySecr3tP@ssword
+      responses:
+        "201":
+          description: Inscription réussie. Retourne les tokens de session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseAuth"
+        "400":
+          description: Données invalides ou utilisateur déjà existant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/refresh:
+    post:
+      summary: Renouveler l'Access Token
+      description: Utilise le Refresh Token fourni pour générer un nouvel Access Token et un nouveau Refresh Token.
+      tags:
+        - Authentification
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Jetons de session renouvelés avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseAuth"
+        "401":
+          description: Refresh token invalide ou expiré.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/google/token:
+    post:
+      summary: Authentification Google OAuth
+      description: Finalise le flux de connexion OAuth en échangeant le code d'autorisation Google contre un couple Access/Refresh token.
+      security: []
+      tags:
+        - Authentification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Code d'autorisation retourné par Google OAuth.
+                  example: 4/0AfgeXvuzX8...
+      responses:
+        "200":
+          description: Authentification Google réussie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseAuth"
+        "400":
+          description: Code invalide ou erreur d'échange de jeton.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ────────────────────────────────────────────────────────────────────────
+  # USERS
+  # ────────────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      summary: Profil de l'utilisateur courant
+      description: Récupère les informations détaillées du profil de l'utilisateur connecté.
+      tags:
+        - Utilisateurs
+      responses:
+        "200":
+          description: Détails du profil retournés avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseUser"
+        "401":
+          description: Non authentifié.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    patch:
+      summary: Mettre à jour le profil de l'utilisateur courant
+      description: Permet de modifier le nom d'utilisateur (username) ou d'autres informations de base.
+      tags:
+        - Utilisateurs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: NewEsportName
+      responses:
+        "200":
+          description: Profil mis à jour.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseUser"
+        "400":
+          description: Validation échouée ou pseudo déjà pris.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Non authentifié.
+
+  /users/me/password:
+    patch:
+      summary: Modifier le mot de passe
+      description: Permet à l'utilisateur courant de changer son mot de passe en fournissant son mot de passe actuel et son nouveau mot de passe.
+      tags:
+        - Utilisateurs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 6
+      responses:
+        "200":
+          description: Mot de passe mis à jour avec succès.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  timestamp:
+                    type: string
+                    format: date-time
+                  data:
+                    type: string
+                    example: "Password updated successfully"
+        "400":
+          description: Le mot de passe ne respecte pas les critères de sécurité.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Mot de passe actuel incorrect ou non authentifié.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ────────────────────────────────────────────────────────────────────────
+  # FANTASY LEAGUES
+  # ────────────────────────────────────────────────────────────────────────
+  /leagues:
+    get:
+      summary: Lister les ligues de l'utilisateur
+      description: Récupère la liste de toutes les ligues de fantasy auxquelles l'utilisateur courant participe.
+      tags:
+        - Ligues Fantasy
+      responses:
+        "200":
+          description: Liste des ligues retournée avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeagueList"
+        "401":
+          description: Non authentifié.
+
+    post:
+      summary: Créer une ligue de fantasy
+      description: Permet à l'utilisateur de créer sa propre ligue fantasy avec ses propres règles (jeux ciblés, taille du roster, cooldown de transfert, etc.).
+      tags:
+        - Ligues Fantasy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - games
+                - rosterSize
+                - cooldownDays
+              properties:
+                name:
+                  type: string
+                  example: League des Pros 2026
+                games:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Game"
+                  example: ["LEAGUE_OF_LEGENDS", "VALORANT"]
+                tournaments:
+                  type: array
+                  items:
+                    type: string
+                  example: ["LEC 2026 Summer", "VCT EMEA 2026"]
+                rosterSize:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 5
+                cooldownDays:
+                  type: integer
+                  minimum: 0
+                  example: 1
+                onlyCreatorInvites:
+                  type: boolean
+                  default: false
+                  example: false
+      responses:
+        "201":
+          description: Ligue créée avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeague"
+        "400":
+          description: Données de configuration de ligue invalides.
+
+  /leagues/upcoming-tournaments:
+    get:
+      summary: Obtenir les tournois à venir
+      description: Retourne la liste des compétitions réelles esports programmées prochainement, triées par jeu. Permet d'aider à la configuration de la ligue.
+      tags:
+        - Ligues Fantasy
+      responses:
+        "200":
+          description: Map des compétitions par jeu retournée avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseUpcomingTournaments"
+
+  /leagues/{id}:
+    get:
+      summary: Détails d'une ligue
+      description: Récupère les informations complètes d'une ligue spécifique à partir de son ID (y compris la liste de ses membres).
+      tags:
+        - Ligues Fantasy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: L'identifiant (ID) de la ligue fantasy.
+      responses:
+        "200":
+          description: Détails de la ligue retournés avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeague"
+        "404":
+          description: Ligue introuvable.
+
+    delete:
+      summary: Supprimer une ligue
+      description: Supprime définitivement la ligue (uniquement autorisé pour le créateur de la ligue).
+      tags:
+        - Ligues Fantasy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: L'identifiant de la ligue à supprimer.
+      responses:
+        "200":
+          description: Ligue supprimée avec succès.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  timestamp:
+                    type: string
+                    format: date-time
+                  data:
+                    type: string
+                    example: "League deleted successfully"
+        "403":
+          description: Non autorisé à supprimer cette ligue (seul le créateur le peut).
+        "404":
+          description: Ligue introuvable.
+
+  /leagues/{id}/join:
+    post:
+      summary: Rejoindre une ligue
+      description: Permet à l'utilisateur courant de s'enregistrer en tant que membre d'une ligue à l'aide de son code d'invitation unique.
+      tags:
+        - Ligues Fantasy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: L'identifiant de la ligue à rejoindre.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - inviteCode
+              properties:
+                inviteCode:
+                  type: string
+                  example: INV-A1B2-C3D4
+      responses:
+        "200":
+          description: Ligue rejointe avec succès. Retourne les informations de la ligue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeague"
+        "400":
+          description: Code d'invitation invalide ou ligue pleine (maxMembers atteint).
+        "404":
+          description: Ligue introuvable.
+
+  /leagues/{leagueId}/leaderboard:
+    get:
+      summary: Classement de la ligue
+      description: Récupère la liste ordonnée des membres de la ligue avec leurs scores cumulés calculés à partir de leurs rosters passés.
+      tags:
+        - Ligues Fantasy
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: L'identifiant de la ligue.
+      responses:
+        "200":
+          description: Classement retourné avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseLeagueMemberList"
+        "404":
+          description: Ligue introuvable.
+
+  # ────────────────────────────────────────────────────────────────────────
+  # ROSTERS (GAMEPLAY FANTASY)
+  # ────────────────────────────────────────────────────────────────────────
+  /rosters:
+    get:
+      summary: Récupérer les rosters de l'utilisateur
+      description: Liste l'ensemble des compositions d'équipes de fantasy créées par l'utilisateur courant. Peut être filtré par ligue.
+      tags:
+        - Rosters Fantasy
+      parameters:
+        - name: leagueId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optionnel. Filtrer pour n'obtenir que les rosters d'une ligue donnée.
+      responses:
+        "200":
+          description: Liste de rosters retournée avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRosterList"
+
+    post:
+      summary: Créer un roster (composer son équipe pour une journée)
+      description: Permet à un membre d'une ligue de verrouiller sa composition de joueurs pros pour une journée de match spécifique (`EsportMatchDay`). Cette opération est bloquée après la date `lockTime` de la journée.
+      tags:
+        - Rosters Fantasy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - leagueId
+                - matchDayId
+                - proPlayerIds
+              properties:
+                leagueId:
+                  type: string
+                  example: league_cuid_1
+                matchDayId:
+                  type: string
+                  example: matchday_cuid_1
+                proPlayerIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Liste des identifiants (IDs) des joueurs pros sélectionnés. Doit respecter la taille maximale (`rosterSize`) imposée par les règles de la ligue.
+                  example:
+                    [
+                      "player_cuid_1",
+                      "player_cuid_2",
+                      "player_cuid_3",
+                      "player_cuid_4",
+                      "player_cuid_5",
+                    ]
+      responses:
+        "201":
+          description: Roster créé et enregistré avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRoster"
+        "400":
+          description: Roster invalide (taille incorrecte, doublons, rôles manquants, ou joueurs n'appartenant pas aux jeux autorisés).
+        "403":
+          description: La date limite de verrouillage (`lockTime`) est dépassée pour cette journée.
+
+  /rosters/{id}:
+    get:
+      summary: Détails d'un roster
+      description: Récupère la composition détaillée d'un roster spécifique par son ID (avec les stats et le score calculé).
+      tags:
+        - Rosters Fantasy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifiant du roster.
+      responses:
+        "200":
+          description: Détails du roster retournés.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRoster"
+        "404":
+          description: Roster introuvable.
+
+    patch:
+      summary: Modifier la composition d'un roster
+      description: Permet de mettre à jour les joueurs pros sélectionnés dans son équipe de fantasy tant que la journée de match correspondante n'est pas verrouillée (avant `lockTime`).
+      tags:
+        - Rosters Fantasy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifiant du roster.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - proPlayerIds
+              properties:
+                proPlayerIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Nouvelle liste des identifiants des joueurs pros.
+                  example:
+                    [
+                      "player_cuid_1",
+                      "player_cuid_9",
+                      "player_cuid_3",
+                      "player_cuid_4",
+                      "player_cuid_5",
+                    ]
+      responses:
+        "200":
+          description: Roster mis à jour avec succès.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRoster"
+        "400":
+          description: Liste de joueurs invalide.
+        "403":
+          description: Le roster est verrouillé (date limite dépassée).
+
+  /rosters/league/{leagueId}/match-day/{matchDayId}:
+    get:
+      summary: Récupérer les rosters de tous les membres
+      description: Permet d'afficher les rosters de tous les concurrents d'une ligue pour une journée donnée afin de suivre le déroulement et comparer les compositions. Les rosters peuvent être cachés ou anonymisés jusqu'à ce que la journée soit verrouillée (`lockTime`).
+      tags:
+        - Rosters Fantasy
+      parameters:
+        - name: leagueId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: matchDayId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Liste de rosters de la ligue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRosterList"
+
+  # ────────────────────────────────────────────────────────────────────────
+  # PRO PLAYERS (ESPORT REFERENCE DATA)
+  # ────────────────────────────────────────────────────────────────────────
+  /esport/pro-players:
+    get:
+      summary: Lister les joueurs pros réels
+      description: Récupère la liste des joueurs professionnels réels enregistrés dans le système. Utile pour la recherche et la composition des équipes.
+      tags:
+        - Données Esports Réelles
+      parameters:
+        - name: game
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Game"
+          description: Filtrer par jeu esport.
+        - name: team
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optionnel. ID ou nom d'une équipe réelle pour filtrer ses joueurs.
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optionnel. Rôle de jeu (ex MID, ADC, TOP pour LoL).
+      responses:
+        "200":
+          description: Liste de joueurs pros retournée.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProPlayerList"
+
+  /esport/pro-players/{id}:
+    get:
+      summary: Détails d'un joueur pro
+      description: Récupère la fiche détaillée d'un joueur professionnel réel (avec ses informations d'équipe et son historique de performances récentes).
+      tags:
+        - Données Esports Réelles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails du joueur pro.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProPlayer"
+        "404":
+          description: Joueur introuvable.
+
+  /esport/pro-players/match-day/{matchDayId}:
+    get:
+      summary: Lister les joueurs éligibles pour un Match Day
+      description: Récupère la liste des joueurs professionnels jouant lors d'un Match Day donné, avec optionnellement le contexte de la ligue de fantasy pour afficher leurs performances ou leur éligibilité au draft.
+      tags:
+        - Données Esports Réelles
+      parameters:
+        - name: matchDayId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: leagueId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optionnel. Contexte de la ligue fantasy pour inclure des informations spécifiques (ex joueurs déjà bloqués/draftés).
+      responses:
+        "200":
+          description: Liste des joueurs éligibles retournée.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseProPlayerList"
+
+  # ────────────────────────────────────────────────────────────────────────
+  # MATCH DAYS & REAL MATCHES
+  # ────────────────────────────────────────────────────────────────────────
+  /esport/match-days:
+    get:
+      summary: Lister les journées de matchs réels (Calendrier)
+      description: Récupère la liste des Match Days réels configurés dans le calendrier. Les utilisateurs composent leurs rosters fantasy autour de ces journées.
+      tags:
+        - Calendrier & Matchs Esports
+      parameters:
+        - name: game
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Game"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MatchDayStatus"
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Filtrer par date spécifique (format AAAA-MM-JJ).
+      responses:
+        "200":
+          description: Liste de journées retournée.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMatchDayList"
+
+  /esport/match-days/{id}:
+    get:
+      summary: Détails d'un Match Day
+      description: Récupère les détails d'un Match Day spécifique, y compris la liste des matchs réels planifiés et les fiches de performances réelles enregistrées pour ce jour.
+      tags:
+        - Calendrier & Matchs Esports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails du Match Day.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMatchDayDetail"
+        "404":
+          description: Match Day introuvable.
+
+  /esport/matches/{id}:
+    get:
+      summary: Détails d'un match esport réel
+      description: Récupère les statistiques, manches jouées (games), scores en direct ou finaux d'un match opposant deux équipes professionnelles.
+      tags:
+        - Calendrier & Matchs Esports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Détails du match retournés.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMatch"
+        "404":
+          description: Match introuvable.
+
+# ────────────────────────────────────────────────────────────────────────
+# COMPONENTS & SCHEMAS
+# ────────────────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Injecter l'Access Token JWT (ou Refresh Token pour la route /auth/refresh) obtenu lors de la connexion.
+
+  schemas:
+    # ── ENUMS ──
+    Game:
+      type: string
+      enum:
+        - LEAGUE_OF_LEGENDS
+        - COUNTER_STRIKE
+        - ROCKET_LEAGUE
+        - VALORANT
+      example: LEAGUE_OF_LEGENDS
+
+    Role:
+      type: string
+      enum:
+        - USER
+        - ADMIN
+      default: USER
+      example: USER
+
+    MatchDayStatus:
+      type: string
+      enum:
+        - OPEN
+        - LOCKED
+        - SCORED
+      example: OPEN
+
+    RosterStatus:
+      type: string
+      enum:
+        - PENDING
+        - LOCKED
+        - SCORED
+      example: PENDING
+
+    # ── ENVELOPE BASE ──
+    ApiResponseEnvelope:
+      type: object
+      required:
+        - statusCode
+        - timestamp
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-07-03T10:50:41.000Z"
+
+    ApiError:
+      type: object
+      required:
+        - statusCode
+        - timestamp
+        - message
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+          example: "Une erreur de validation s'est produite."
+        error:
+          type: string
+          example: "Bad Request"
+
+    # ── SPECIFIC DATA SCHEMAS ──
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - role
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: usr_cljx7d3a00000j
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        username:
+          type: string
+          example: EsportMaster
+        avatarUrl:
+          type: string
+          nullable: true
+          example: "https://avatar.provider.com/me.png"
+        role:
+          $ref: "#/components/schemas/Role"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        hasPassword:
+          type: boolean
+          description: Indique si l'utilisateur possède un mot de passe local défini.
+          example: true
+        isGoogleLinked:
+          type: boolean
+          description: Indique si le compte est lié à Google OAuth.
+          example: false
+
+    AuthResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+      properties:
+        accessToken:
+          type: string
+          description: Jeton JWT à courte durée de vie (ex. 15 minutes) servant pour toutes les requêtes authentifiées.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          description: Jeton à longue durée de vie (ex. 7 jours) stocké en base de données servant à rafraîchir l'Access Token.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.rf...
+
+    Team:
+      type: object
+      required:
+        - id
+        - name
+        - game
+      properties:
+        id:
+          type: string
+          example: team_cuid_fnatic
+        name:
+          type: string
+          example: Fnatic
+        acronym:
+          type: string
+          nullable: true
+          example: FNC
+        imageUrl:
+          type: string
+          nullable: true
+          example: "https://cdn.pandascore.co/teams/fnc.png"
+        game:
+          $ref: "#/components/schemas/Game"
+
+    ProPlayer:
+      type: object
+      required:
+        - id
+        - name
+        - game
+        - role
+        - isActive
+      properties:
+        id:
+          type: string
+          example: ply_cuid_caps
+        name:
+          type: string
+          example: Caps
+        team:
+          $ref: "#/components/schemas/Team"
+          nullable: true
+        game:
+          $ref: "#/components/schemas/Game"
+        role:
+          type: string
+          description: Poste ou rôle en jeu (ex. MID, TOP, ADC, IGL, Duelist).
+          example: MID
+        imageUrl:
+          type: string
+          nullable: true
+          example: "https://cdn.pandascore.co/players/caps.png"
+        isActive:
+          type: boolean
+          example: true
+        performances:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - score
+            properties:
+              id:
+                type: string
+              score:
+                type: number
+                nullable: true
+                example: 24.5
+
+    LeagueMember:
+      type: object
+      required:
+        - id
+        - totalScore
+        - user
+      properties:
+        id:
+          type: string
+          example: mem_cuid_1
+        totalScore:
+          type: number
+          example: 184.2
+        joinedAt:
+          type: string
+          format: date-time
+        user:
+          type: object
+          required:
+            - id
+            - username
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+
+    League:
+      type: object
+      required:
+        - id
+        - name
+        - games
+        - rosterSize
+        - cooldownDays
+        - inviteCode
+        - maxMembers
+        - onlyCreatorInvites
+        - createdById
+        - members
+      properties:
+        id:
+          type: string
+          example: lge_cuid_fantasy1
+        name:
+          type: string
+          example: League des Champions
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/Game"
+        tournaments:
+          type: array
+          items:
+            type: string
+          example: ["LEC Summer 2026", "LFL Summer 2026"]
+        rosterSize:
+          type: integer
+          example: 5
+        cooldownDays:
+          type: integer
+          example: 1
+        inviteCode:
+          type: string
+          example: INV-K2L9-M10P
+        maxMembers:
+          type: integer
+          example: 12
+        onlyCreatorInvites:
+          type: boolean
+          example: false
+        createdById:
+          type: string
+          example: usr_cljx7d3a00000j
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueMember"
+        _count:
+          type: object
+          properties:
+            members:
+              type: integer
+              example: 4
+
+    Match:
+      type: object
+      required:
+        - id
+        - matchDayId
+        - teamAId
+        - teamBId
+        - scheduledAt
+        - status
+        - teamA
+        - teamB
+      properties:
+        id:
+          type: string
+          example: mat_cuid_123
+        matchDayId:
+          type: string
+          example: md_cuid_456
+        teamAId:
+          type: string
+        teamBId:
+          type: string
+        winnerId:
+          type: string
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: Statut du match réel (not_started, running, finished, canceled).
+          example: finished
+        teamA:
+          $ref: "#/components/schemas/Team"
+        teamB:
+          $ref: "#/components/schemas/Team"
+        teamAScore:
+          type: integer
+          nullable: true
+          example: 2
+        teamBScore:
+          type: integer
+          nullable: true
+          example: 1
+        tournamentName:
+          type: string
+          nullable: true
+          example: "LEC 2026 Summer Season"
+        games:
+          type: array
+          items:
+            type: object
+          nullable: true
+          description: Statistiques détaillées de chaque manche jouée au cours de la rencontre.
+        winner:
+          $ref: "#/components/schemas/Team"
+          nullable: true
+
+    MatchDay:
+      type: object
+      required:
+        - id
+        - date
+        - game
+        - lockTime
+        - status
+      properties:
+        id:
+          type: string
+          example: md_cuid_456
+        date:
+          type: string
+          format: date
+          example: "2026-07-03"
+        game:
+          $ref: "#/components/schemas/Game"
+        lockTime:
+          type: string
+          format: date-time
+          description: Heure limite à laquelle les rosters des utilisateurs pour cette journée sont verrouillés.
+          example: "2026-07-03T18:00:00.000Z"
+        status:
+          $ref: "#/components/schemas/MatchDayStatus"
+        _count:
+          type: object
+          properties:
+            performances:
+              type: integer
+              example: 10
+            rosters:
+              type: integer
+              example: 4
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+
+    DayPerformance:
+      type: object
+      required:
+        - id
+        - rawStats
+        - proPlayer
+      properties:
+        id:
+          type: string
+          example: perf_cuid_999
+        rawStats:
+          type: object
+          description: Objet JSON contenant les statistiques brutes du joueur sur ce Match Day.
+          example: { "kills": 8, "deaths": 2, "assists": 12, "creepScore": 312 }
+        score:
+          type: number
+          nullable: true
+          description: Score de fantasy calculé par le Scoring Service pour cette performance.
+          example: 24.5
+        proPlayer:
+          type: object
+          required:
+            - id
+            - name
+            - role
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            team:
+              $ref: "#/components/schemas/Team"
+              nullable: true
+            role:
+              type: string
+
+    RosterPick:
+      type: object
+      required:
+        - id
+        - pickOrder
+        - proPlayer
+      properties:
+        id:
+          type: string
+        pickOrder:
+          type: integer
+          description: Ordre de priorité de sélection du joueur dans l'équipe fantasy.
+          example: 1
+        proPlayer:
+          type: object
+          required:
+            - id
+            - name
+            - role
+            - isActive
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            team:
+              $ref: "#/components/schemas/Team"
+              nullable: true
+            role:
+              type: string
+            imageUrl:
+              type: string
+              nullable: true
+            isActive:
+              type: boolean
+
+    Roster:
+      type: object
+      required:
+        - id
+        - status
+        - picks
+        - matchDay
+        - league
+      properties:
+        id:
+          type: string
+          example: rst_cuid_123
+        status:
+          $ref: "#/components/schemas/RosterStatus"
+        totalScore:
+          type: number
+          nullable: true
+          description: Somme des scores des performances des joueurs composant ce roster pour ce Match Day.
+          example: 98.4
+        picks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RosterPick"
+        matchDay:
+          $ref: "#/components/schemas/MatchDay"
+        league:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        user:
+          type: object
+          required:
+            - id
+            - username
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+
+    # ── API RESPONSES WITH WRAPPERS ──
+    ApiResponseAuth:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/AuthResponse"
+
+    ApiResponseUser:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/User"
+
+    ApiResponseLeague:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/League"
+
+    ApiResponseLeagueList:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/League"
+
+    ApiResponseLeagueMemberList:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/LeagueMember"
+
+    ApiResponseUpcomingTournaments:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              description: Objet associant chaque jeu à un tableau de chaînes représentant les noms des ligues esports de référence.
+              example:
+                LEAGUE_OF_LEGENDS: ["LEC", "LFL", "LCK", "LCS"]
+                VALORANT: ["VCT EMEA", "VCT Americas", "VCT Pacific"]
+                COUNTER_STRIKE: ["IEM", "ESL Pro League"]
+                ROCKET_LEAGUE: ["RLCS"]
+
+    ApiResponseRoster:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/Roster"
+
+    ApiResponseRosterList:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Roster"
+
+    ApiResponseProPlayer:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ProPlayer"
+
+    ApiResponseProPlayerList:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProPlayer"
+
+    ApiResponseMatchDayList:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/MatchDay"
+
+    ApiResponseMatchDayDetail:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              allOf:
+                - $ref: "#/components/schemas/MatchDay"
+                - type: object
+                  required:
+                    - performances
+                  properties:
+                    performances:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/DayPerformance"
+
+    ApiResponseMatch:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponseEnvelope"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/Match"

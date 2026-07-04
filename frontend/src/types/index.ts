@@ -9,6 +9,7 @@ export interface User {
   email: string;
   username: string;
   avatarUrl?: string | null;
+  role?: 'USER' | 'ADMIN';
   createdAt: string;
   hasPassword?: boolean;
   isGoogleLinked?: boolean;
@@ -25,6 +26,7 @@ export interface League {
   maxMembers: number;
   onlyCreatorInvites: boolean;
   createdById: string;
+  createdAt: string;
   members: LeagueMember[];
   _count?: { members: number };
 }
@@ -44,6 +46,7 @@ export interface ProPlayer {
   role: string;
   imageUrl?: string;
   isActive: boolean;
+  nationality?: string | null;
   performances?: { id: string; score: number | null }[];
 }
 
@@ -52,7 +55,9 @@ export interface Team {
   name: string;
   acronym?: string | null;
   imageUrl?: string | null;
+  location?: string | null;
   game: Game;
+  players?: ProPlayer[];
 }
 
 export interface Match {
@@ -68,8 +73,12 @@ export interface Match {
   teamAScore?: number | null;
   teamBScore?: number | null;
   tournamentName?: string | null;
+  streamUrl?: string | null;
+  matchType?: string | null;
+  numberOfGames?: number | null;
   games?: any[] | null;
   winner?: Team | null;
+  matchDay?: MatchDay & { performances?: DayPerformance[] };
 }
 
 export interface MatchDay {

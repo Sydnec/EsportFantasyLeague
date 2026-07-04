@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/services/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "tsConfigPath": "apps/services/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/services",
+  "projects": {
+    "backend": {
+      "type": "application",
+      "root": "apps/backend",
+      "entryFile": "main",
+      "sourceRoot": "apps/backend/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/backend/tsconfig.app.json"
+      }
+    },
+    "esport-adapter": {
+      "type": "application",
+      "root": "apps/esport-adapter",
+      "entryFile": "main",
+      "sourceRoot": "apps/esport-adapter/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/esport-adapter/tsconfig.app.json"
+      }
+    },
+    "gateway": {
+      "type": "application",
+      "root": "apps/gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/gateway/tsconfig.app.json"
+      }
+    },
+    "scoring": {
+      "type": "application",
+      "root": "apps/scoring",
+      "entryFile": "main",
+      "sourceRoot": "apps/scoring/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/scoring/tsconfig.app.json"
+      }
+    },
+    "shared": {
+      "type": "library",
+      "root": "libs/shared",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared/tsconfig.lib.json"
+      }
+    }
+  },
+  "defaultProject": "gateway"
+}

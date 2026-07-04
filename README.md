@@ -1,98 +1,98 @@
 # Esport Fantasy League
 
-Bienvenue sur le repository du projet **Esport Fantasy League**. 
+Bienvenue sur le dépôt du projet **Esport Fantasy League**. La plateforme a été conçue selon une architecture orientée microservices événementiels afin de garantir l'indépendance de mise en production et l'isolation des responsabilités.
+
+---
 
 ## 🎯 Vision du Projet
-Créer une plateforme de Fantasy League interactive et performante, avec une gestion de données en temps réel pour suivre les performances des joueurs pros.
 
-## 🛠 Stack Technique
-Le projet suit une architecture de type monorepo comprenant les briques suivantes :
-- **Base de données** : PostgreSQL (via Docker)
-- **Backend** : NestJS avec Prisma ORM
-- **Frontend** : Vite (React/TypeScript)
+Créer une plateforme de Fantasy League interactive et performante, avec une gestion de données en temps réel pour suivre les performances des joueurs pros sur plusieurs jeux esport (League of Legends, Counter-Strike, Rocket League, Valorant).
 
-> 📖 **Pour en savoir plus sur le fonctionnement interne** (modèle de BDD, cycle de vie métier, ingestion de données), consulte le document [Architecture & Métier](docs/ARCHITECTURE.md) pour un aperçu rapide.
+---
 
-## 🚀 Démarrage Rapide (Local)
+## 🛠️ Stack Technique & Architecture
 
-### 1. Base de données
-Le projet inclut un fichier `docker-compose.yml` à la racine pour instancier rapidement la base de données.
+Le projet suit une architecture de type monorepo découpée en plusieurs services autonomes :
+
+1. **API Gateway** (`services/gateway`) : Point d'entrée unique (Port 3000) gérant le routage inverse vers les microservices et la validation initiale des jetons JWT.
+2. **Backend Service** (`services/backend`) : Service central du gameplay (gestion des utilisateurs, authentification JWT/Google OAuth, création de ligues privées/publiques, drafts et composition des rosters).
+3. **Esport Data Adapter Service** (`services/esport-adapter`) : Service d'ingestion hybride (Pandascore pour les plannings + API éditeurs spécialisées pour les statistiques détaillées).
+4. **Scoring Service** (`services/scoring`) : Microservice asynchrone (stateless) calculant les scores de fantasy en fonction des formules propres à chaque jeu.
+5. **Frontend** (`frontend`) : Application client développée en React (Vite / TypeScript).
+6. **Base de données & Broker** : PostgreSQL (avec schémas logiques isolés par service) et RabbitMQ pour la communication événementielle asynchrone.
+
+> 📖 **Pour en savoir plus sur la conception interne et les flux de données :**
+>
+> - Consultez le [openapi.yaml](docs/openapi.yaml) pour la spécification OpenAPI / Swagger complète des APIs.
+> - Consultez le [MICROSERVICES_ARCHITECTURE.md](docs/MICROSERVICES_ARCHITECTURE.md) pour les contrats de messages et les schémas SQL.
+> - Consultez le [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) pour les règles de commits et de branches.
+
+---
+
+## 🚀 Démarrage Rapide (Développement Local)
+
+### 1. Démarrer les services d'infrastructure
+
+Le projet contient un fichier `docker-compose.yml` à la racine permettant de lancer PostgreSQL et RabbitMQ en une seule commande :
+
 ```bash
-docker-compose up -d
+docker compose up -d postgres rabbitmq
 ```
 
-### 2. Backend
-Prérequis : Node.js installé.
+### 2. Configurer et lancer les services
+
+Chaque microservice possède son propre dossier et ses propres variables d'environnement (`.env`).
+Pour chaque service (`gateway`, `backend`, `esport-adapter`, `scoring`) :
+
 ```bash
-cd backend
+cd services/<nom-du-service>
 npm install
-# Générer le client Prisma et pousser le schéma en DB (si nécessaire)
-npx prisma generate
+
+# (Uniquement pour backend et esport-adapter) Générer le client Prisma et pousser le schéma
 npx prisma db push
+
 # Lancer le serveur en mode développement
 npm run start:dev
 ```
 
-### 3. Frontend
+### 3. Lancer le Frontend
+
 Dans un nouveau terminal :
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### 4. Dashboard local
-Un petit dashboard local non déployé est disponible dans `dev-dashboard/` pour inspecter et modifier les données depuis cette machine uniquement. Il s'ouvre directement dans le navigateur et parle au backend local.
-
-Dans `dev-dashboard/`, lance `npm install` puis `npm run dev` pour le mode front, ou `npm run build` puis `npm start` pour le serveur local qui sert le build et proxifie l’API.
-
-Par défaut il vise `http://localhost:3000`. Si tu veux exécuter les requêtes SQL brutes depuis ce dashboard, active aussi `DEV_DASHBOARD_ALLOW_SQL=true` côté backend.
+---
 
 ## 🌍 Hébergement & Déploiement
 
-L'architecture étant découpée entre un backend (NestJS + Postgres) et un frontend (React), plusieurs options de déploiement sont envisageables. Actuellement, la stratégie est la suivante :
-- **Frontend** : Hébergement sur Vercel, avec déploiement continu branché sur le dépôt GitHub.
-- **Backend & Base de données** : Auto-hébergement, en utilisant Docker pour encapsuler l'application NestJS et la base de données PostgreSQL. Github actions pour assurer le build et le déploiement sur le serveur VPS.
+- **Frontend** : Hébergement sur Vercel, avec déploiement continu branché sur la branche `main` du dépôt GitHub.
+- **Microservices & Infrastructure** : Auto-hébergement géré par Docker Compose sur un serveur VPS, automatisé via GitHub Actions.
 
-### GitHub Actions
+### Pipelines GitHub Actions
 
-Le dépôt utilise deux workflows, limités au backend :
-- **CI** : exécute le build du backend sur les branches `main` et `dev`.
-- **CD** : s'exécute sur un runner auto-hébergé installé sur le VPS et déploie automatiquement le backend à chaque push sur `main`.
+- **CI (Intégration Continue)** : S'exécute sur chaque push ou Pull Request sur `main` ou `dev`. Compile l'ensemble des 4 services en parallèle grâce à une stratégie de matrix GitHub Actions.
+- **CD (Déploiement Continu)** : Déploie automatiquement les services sur le serveur VPS lors d'un push sur `main`.
 
-Le frontend est déployé séparément sur Vercel et ne fait pas partie de ce pipeline GitHub Actions.
+### Liste des Secrets attendus pour le déploiement (Production)
 
-Secrets attendus pour le runner de production :
-- `ESFL_DB_USER`
-- `ESFL_DB_PASSWORD`
-- `ESFL_DB_NAME`
-- `BACKEND_PORT`
-- `BACKEND_DATABASE_URL`
-- `BACKEND_JWT_SECRET`
-- `BACKEND_GOOGLE_CLIENT_ID`
-- `BACKEND_GOOGLE_CLIENT_SECRET`
-- `BACKEND_GOOGLE_CALLBACK_URL`
-- `BACKEND_FRONTEND_URL`
-- `BACKEND_PANDASCORE_API_TOKEN`
+Pour fonctionner, le runner auto-hébergé du VPS attend les secrets suivants configurés sur GitHub :
 
-Le runner doit avoir Docker et Docker Compose disponibles localement.
-
-## 📜 Conventions & Git Flow
-
-L'organisation du dépôt suit une version simplifiée du Gitflow, adaptée pour un développeur solo, afin de garantir que la version en production soit toujours stable.
-
-1. **Branches** :
-   - `main` : Reflète l'environnement de production. Le code ici doit toujours être fonctionnel et déployable.
-   - `dev` : Branche de développement continu. C'est ici que le code est poussé au quotidien avant d'être réuni dans une release.
-   - `feature/...` : Pour les développements conséquents ou expérimentaux, partagés depuis `dev` et mergés dans `dev` une fois terminés.
-
-2. **Commits** :
-   L'historique suit les conventions **Conventional Commits** :
-   - `feat:` : Ajout de fonctionnalité
-   - `fix:` : Correction de bug
-   - `refactor:` : Refactorisation
-   - `docs:` : Mise à jour de la documentation
-   - `chore:` : Tâches de maintenance (dépendances, outils, etc.)
-
-3. **Qualité** :
-   Des outils de linting et de formatage sont en place (`.prettierrc` côté backend, `.oxlintrc.json` côté frontend).
+- **Global & DB** :
+  - `ESFL_DB_USER` : Utilisateur de la base de données PostgreSQL.
+  - `ESFL_DB_PASSWORD` : Mot de passe de la base de données PostgreSQL.
+  - `ESFL_DB_NAME` : Nom physique de la base de données PostgreSQL.
+  - `RABBITMQ_DEFAULT_USER` : Identifiant d'administration RabbitMQ.
+  - `RABBITMQ_DEFAULT_PASS` : Mot de passe d'administration RabbitMQ.
+- **Backend Service** :
+  - `BACKEND_DATABASE_URL` : URL de connexion ciblant le schéma `backend_db`.
+  - `BACKEND_JWT_SECRET` : Clé secrète de signature des tokens JWT.
+  - `BACKEND_GOOGLE_CLIENT_ID` / `BACKEND_GOOGLE_CLIENT_SECRET` / `BACKEND_GOOGLE_CALLBACK_URL` : Identifiants Google OAuth.
+  - `BACKEND_FRONTEND_URL` : URL de redirection finale du frontend.
+  - `RABBITMQ_URL` : URL amqp de connexion au broker (ex: `amqp://user:pass@rabbitmq:5672`).
+- **Esport Adapter Service** :
+  - `ESPORT_DATABASE_URL` : URL de connexion ciblant le schéma `esport_db`.
+  - `ESPORT_PANDASCORE_API_TOKEN` : Token de sécurité de l'API Pandascore.

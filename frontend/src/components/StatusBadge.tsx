@@ -6,6 +6,9 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   OPEN: { color: '#10b981', label: 'Ouvert' },
   PENDING: { color: '#10b981', label: 'En attente' },
   LOCKED: { color: '#f59e0b', label: 'Verrouillé' },
+  // Matches are over but our own scoring hasn't produced results yet — distinct
+  // from SCORED so a "Résultats" link doesn't get shown before there's anything to show.
+  FINISHED: { color: '#8b5cf6', label: 'Terminé' },
   SCORED: { color: '#00d4ff', label: 'Terminé' },
 };
 

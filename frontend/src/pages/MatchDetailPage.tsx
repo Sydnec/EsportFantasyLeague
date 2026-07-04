@@ -130,10 +130,10 @@ export function MatchDetailPage() {
         <div className="match-detail-scoreboard-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '16px' }}>
           <div className="match-detail-scoreboard-main" style={{ display: 'flex', justifyContent: 'center', width: '100%', gap: '32px', alignItems: 'center' }}>
             <div className="team-col team-a">
-              {match.teamA.imageUrl && <img src={match.teamA.imageUrl} alt={match.teamA.name} className="team-logo-lg" />}
+              {match.teamA?.imageUrl && <img src={match.teamA.imageUrl} alt={match.teamA.name} className="team-logo-lg" />}
               <h2 className="team-name">
-                {match.teamA.location && <span className={`fi fi-${match.teamA.location.toLowerCase()} flag-icon-lg`}></span>}
-                {match.teamA.name}
+                {match.teamA?.location && <span className={`fi fi-${match.teamA.location.toLowerCase()} flag-icon-lg`}></span>}
+                {match.teamA?.name || 'TBD'}
               </h2>
             </div>
             
@@ -153,10 +153,10 @@ export function MatchDetailPage() {
             </div>
             
             <div className="team-col team-b">
-              {match.teamB.imageUrl && <img src={match.teamB.imageUrl} alt={match.teamB.name} className="team-logo-lg" />}
+              {match.teamB?.imageUrl && <img src={match.teamB.imageUrl} alt={match.teamB.name} className="team-logo-lg" />}
               <h2 className="team-name">
-                {match.teamB.location && <span className={`fi fi-${match.teamB.location.toLowerCase()} flag-icon-lg`}></span>}
-                {match.teamB.name}
+                {match.teamB?.location && <span className={`fi fi-${match.teamB.location.toLowerCase()} flag-icon-lg`}></span>}
+                {match.teamB?.name || 'TBD'}
               </h2>
             </div>
           </div>
@@ -179,24 +179,37 @@ export function MatchDetailPage() {
             {match.games && match.games.length > 0 && (
               <div className="games-list-compact" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {match.games.map((g: any, index: number) => {
-                  const teamAWon = g.winner?.id?.toString() === match.teamAId;
-                  const teamBWon = g.winner?.id?.toString() === match.teamBId;
+                  const hasRealScore = g.teamAScore != null && g.teamBScore != null;
+                  // Never infer the winner from score comparison — a LoL game's
+                  // score is a kill count, which doesn't reliably indicate who
+                  // won (objective/backdoor wins with fewer kills happen).
+                  // `winnerSide` (enriched sources) / `winner.id` (raw Pandascore
+                  // blob) are the only trustworthy signals.
+                  const teamAWon = g.winnerSide ? g.winnerSide === 'A' : g.winner?.id?.toString() === match.teamAId;
+                  const teamBWon = g.winnerSide ? g.winnerSide === 'B' : g.winner?.id?.toString() === match.teamBId;
                   return (
                     <div key={g.id || index} className="game-row-compact" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', gap: '32px' }}>
                       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                        <span className={teamAWon ? 'game-winner' : 'game-loser'}>{teamAWon ? '1' : '0'}</span>
+                        <span className={teamAWon ? 'game-winner' : 'game-loser'}>
+                          {hasRealScore ? g.teamAScore : (teamAWon ? '1' : '0')}
+                        </span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'center', minWidth: '150px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '150px' }}>
+                        {g.map && (
+                          <span className="game-map" style={{ textAlign: 'center', fontWeight: 600 }}>{g.map}</span>
+                        )}
                         <span className="game-duration" style={{ textAlign: 'center' }}>
                           {g.length ? (
-                            g.length >= 3600 
+                            g.length >= 3600
                               ? `${Math.floor(g.length / 3600)} h ${Math.floor((g.length % 3600) / 60)} min ${g.length % 60} sec`
                               : `${Math.floor(g.length / 60)} min ${g.length % 60} sec`
-                          ) : '-'}
+                          ) : (!g.map ? '-' : null)}
                         </span>
                       </div>
                       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                        <span className={teamBWon ? 'game-winner' : 'game-loser'}>{teamBWon ? '1' : '0'}</span>
+                        <span className={teamBWon ? 'game-winner' : 'game-loser'}>
+                          {hasRealScore ? g.teamBScore : (teamBWon ? '1' : '0')}
+                        </span>
                       </div>
                     </div>
                   );
@@ -216,7 +229,7 @@ export function MatchDetailPage() {
                 const pStats = getPlayerStats(player.id);
                 const score = pStats?.score;
                 const rawStats = pStats?.rawStats;
-                const pImage = player.imageUrl || match.teamA.imageUrl;
+                const pImage = player.imageUrl || match.teamA?.imageUrl;
                 
                 return (
                 <div key={player.id} className="performance-card compact">
@@ -232,7 +245,7 @@ export function MatchDetailPage() {
                       {player.nationality && <span className={`fi fi-${player.nationality.toLowerCase()} flag-icon-sm`} style={{marginRight: '6px', fontSize: '0.85em'}}></span>}
                       {player.name}
                     </span>
-                    <span className="player-role">{player.role}</span>
+                    {player.role && <span className="player-role">{player.role}</span>}
                     {rawStats?.games && rawStats.games.length > 0 && (
                       <div className="player-champions">
                         {rawStats.games.map((g: any, i: number) => 
@@ -244,8 +257,16 @@ export function MatchDetailPage() {
                     )}
                   </div>
                   <div className="player-score-container">
-                    <div className="player-score">
-                      {rawStats ? `${rawStats.kills ?? 0}/${rawStats.deaths ?? 0}/${rawStats.assists ?? 0}` : '-'}
+                    <div className="player-score player-kda">
+                      {rawStats ? (
+                        <>
+                          <span className="kda-value">{rawStats.kills ?? 0}</span>
+                          <span className="kda-sep">/</span>
+                          <span className="kda-value">{rawStats.deaths ?? 0}</span>
+                          <span className="kda-sep">/</span>
+                          <span className="kda-value">{rawStats.assists ?? 0}</span>
+                        </>
+                      ) : '-'}
                     </div>
                     <div className="player-advanced-stat">
                       {score !== undefined && score !== null ? score : '-'} pts
@@ -265,7 +286,7 @@ export function MatchDetailPage() {
                 const pStats = getPlayerStats(player.id);
                 const score = pStats?.score;
                 const rawStats = pStats?.rawStats;
-                const pImage = player.imageUrl || match.teamB.imageUrl;
+                const pImage = player.imageUrl || match.teamB?.imageUrl;
                 
                 return (
                 <div key={player.id} className="performance-card compact">
@@ -281,7 +302,7 @@ export function MatchDetailPage() {
                       {player.nationality && <span className={`fi fi-${player.nationality.toLowerCase()} flag-icon-sm`} style={{marginRight: '6px', fontSize: '0.85em'}}></span>}
                       {player.name}
                     </span>
-                    <span className="player-role">{player.role}</span>
+                    {player.role && <span className="player-role">{player.role}</span>}
                     {rawStats?.games && rawStats.games.length > 0 && (
                       <div className="player-champions">
                         {rawStats.games.map((g: any, i: number) => 
@@ -293,8 +314,16 @@ export function MatchDetailPage() {
                     )}
                   </div>
                   <div className="player-score-container">
-                    <div className="player-score">
-                      {rawStats ? `${rawStats.kills ?? 0}/${rawStats.deaths ?? 0}/${rawStats.assists ?? 0}` : '-'}
+                    <div className="player-score player-kda">
+                      {rawStats ? (
+                        <>
+                          <span className="kda-value">{rawStats.kills ?? 0}</span>
+                          <span className="kda-sep">/</span>
+                          <span className="kda-value">{rawStats.deaths ?? 0}</span>
+                          <span className="kda-sep">/</span>
+                          <span className="kda-value">{rawStats.assists ?? 0}</span>
+                        </>
+                      ) : '-'}
                     </div>
                     <div className="player-advanced-stat">
                       {score !== undefined && score !== null ? score : '-'} pts

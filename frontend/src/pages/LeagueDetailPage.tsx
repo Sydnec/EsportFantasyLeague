@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { leaguesApi } from '../api/leagues';
 import { matchDaysApi } from '../api/match-days';
@@ -22,6 +22,7 @@ export function LeagueDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => {
@@ -30,8 +31,17 @@ export function LeagueDetailPage() {
     rostersApi.getAll(id).then(setUserRosters);
     leaguesApi.getById(id).then((l) => {
       matchDaysApi.getAll().then(mds => {
+        // Bound the window to the league's lifetime: no matches from before it
+        // existed, and nothing further out than a week — beyond that a match
+        // day isn't actionable yet and just clutters the timeline.
+        const createdAtStartOfDay = new Date(l.createdAt);
+        createdAtStartOfDay.setHours(0, 0, 0, 0);
+        const sevenDaysOut = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
         const filtered = mds.filter(md => {
           if (!l.games.includes(md.game)) return false;
+          const mdDate = new Date(md.date).getTime();
+          if (mdDate < createdAtStartOfDay.getTime() || mdDate > sevenDaysOut) return false;
           const hasAllowedMatches = md.matches && md.matches.some((match: any) => {
             const isAllSelected = l.tournaments.includes(`ALL:${md.game}`);
             if (isAllSelected) return true;
@@ -73,6 +83,14 @@ export function LeagueDetailPage() {
       }
     }
   }, [matchDays, searchParams]);
+
+  // Keep the selected day centered in the horizontal timeline instead of
+  // leaving the scroll position wherever it defaulted to (the start of the list).
+  useEffect(() => {
+    if (!selectedDateStr || !timelineRef.current) return;
+    const el = timelineRef.current.querySelector(`[data-date="${selectedDateStr}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [selectedDateStr]);
 
   const copyInviteCode = () => {
     if (league) {
@@ -151,28 +169,47 @@ export function LeagueDetailPage() {
 
               // Helper to compute stats for a date
               const getDayStats = (dayMds: MatchDay[]) => {
-                const allRelevantMatchTimes: number[] = [];
+                const allRelevantMatches: any[] = [];
                 dayMds.forEach(md => {
                   if (!md.matches) return;
                   const isAllSelected = league.tournaments.includes(`ALL:${md.game}`);
                   md.matches.forEach((match: any) => {
                     const leagueName = match.tournamentName?.split(' / ')[0];
                     if (isAllSelected || league.tournaments.includes(leagueName || '')) {
-                      allRelevantMatchTimes.push(new Date(match.scheduledAt).getTime());
+                      allRelevantMatches.push(match);
                     }
                   });
                 });
-                allRelevantMatchTimes.sort((a, b) => a - b);
-                
+                const allRelevantMatchTimes = allRelevantMatches
+                  .map(m => new Date(m.scheduledAt).getTime())
+                  .sort((a, b) => a - b);
+
                 const earliestMatchTime = allRelevantMatchTimes[0];
-                const effectiveLockTime = earliestMatchTime 
-                  ? new Date(earliestMatchTime - 60 * 60 * 1000) 
+                const effectiveLockTime = earliestMatchTime
+                  ? new Date(earliestMatchTime - 60 * 60 * 1000)
                   : null;
-                
+
                 const now = Date.now();
                 const isLocked = effectiveLockTime ? now >= effectiveLockTime.getTime() : false;
                 const isScoredAll = dayMds.every(md => md.status === 'SCORED');
-                const compositeStatus = isScoredAll ? 'SCORED' : isLocked ? 'LOCKED' : 'OPEN';
+
+                // Matches are "over" at the Pandascore level (finished/canceled) well before
+                // our own scoring pipeline catches up — CS/Valorant/Rocket League currently
+                // have no real stats provider, so they'd never leave "Verrouillé" otherwise.
+                const allMatchesOver = allRelevantMatches.length > 0 &&
+                  allRelevantMatches.every(m => m.status === 'finished' || m.status === 'canceled');
+                const latestEndTime = allMatchesOver
+                  ? Math.max(...allRelevantMatches.map(m => new Date(m.endAt || m.scheduledAt).getTime()))
+                  : null;
+                const isFinishedOverdue = allMatchesOver && latestEndTime !== null && (now - latestEndTime) > 60 * 60 * 1000;
+
+                const compositeStatus = isScoredAll
+                  ? 'SCORED'
+                  : isFinishedOverdue
+                    ? 'FINISHED'
+                    : isLocked
+                      ? 'LOCKED'
+                      : 'OPEN';
 
                 return {
                   totalMatches: allRelevantMatchTimes.length,
@@ -187,22 +224,25 @@ export function LeagueDetailPage() {
               return (
                 <>
                   {/* Horizontal Timeline */}
-                  <div className="timeline-container" id="league-detail-timeline">
+                  <div className="timeline-container" id="league-detail-timeline" ref={timelineRef}>
                     {grouped.map(({ dateStr, dateObj, matchDays: dayMds }) => {
                       const isSelected = selectedDateStr === dateStr;
                       const { compositeStatus } = getDayStats(dayMds);
-                      
-                      const dotColor = compositeStatus === 'SCORED' 
-                        ? '#00d4ff' 
-                        : compositeStatus === 'LOCKED' 
-                          ? '#f59e0b' 
+
+                      const dotColor = compositeStatus === 'SCORED'
+                        ? '#00d4ff'
+                        : compositeStatus === 'FINISHED'
+                          ? '#8b5cf6'
+                          : compositeStatus === 'LOCKED'
+                          ? '#f59e0b'
                           : '#10b981';
 
                       const hasRoster = dayMds.some(md => userRosters.some(ur => ur.matchDay?.id === md.id));
 
                       return (
-                        <div 
+                        <div
                           key={dateStr}
+                          data-date={dateStr}
                           className={`timeline-item ${isSelected ? 'active' : ''}`}
                           onClick={() => setSelectedDateStr(dateStr)}
                         >
@@ -281,7 +321,7 @@ export function LeagueDetailPage() {
                             const now = new Date();
                             const targetDate = activeGroup.dateObj;
                             const isPastOrToday = new Date(targetDate.toDateString()) <= new Date(now.toDateString());
-                            const isLockedOrScored = activeStats.compositeStatus === 'LOCKED' || activeStats.compositeStatus === 'SCORED';
+                            const isLockedOrScored = activeStats.compositeStatus === 'LOCKED' || activeStats.compositeStatus === 'FINISHED' || activeStats.compositeStatus === 'SCORED';
                             
                             const isDisabled = !hasRoster && isPastOrToday && isLockedOrScored;
                             const tooltipText = isDisabled 

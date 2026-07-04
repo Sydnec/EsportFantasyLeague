@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { MatchGroupList } from './MatchGroupList';
+import { isUpcomingOrLiveMatch, isRecentlyFinishedMatch } from '../utils/matchWindow';
 import './MatchesSection.css';
 
 export function MatchesSection({ 
@@ -16,10 +17,6 @@ export function MatchesSection({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const filteredMatches = useMemo(() => {
-    const now = Date.now();
-    const oneDayFromNow = now + 24 * 60 * 60 * 1000;
-    const threeHoursAgo = now - 3 * 60 * 60 * 1000;
-
     // Flatten all matches
     const flattened: any[] = [];
     matchDays.forEach((md: any) => {
@@ -41,14 +38,7 @@ export function MatchesSection({
         return false;
       }
 
-      const schedTime = new Date(match.scheduledAt).getTime();
-      const isLive = match.status === 'running';
-      const finishedTime = match.finishedAt ? new Date(match.finishedAt).getTime() : schedTime;
-      const isRecentFinished = match.status === 'finished' && finishedTime >= threeHoursAgo;
-      const isUpcomingNear = (match.status !== 'finished' && match.status !== 'canceled' && match.status !== 'running') && 
-                             schedTime <= oneDayFromNow;
-
-      return isLive || isRecentFinished || isUpcomingNear;
+      return isUpcomingOrLiveMatch(match) || isRecentlyFinishedMatch(match);
     });
 
     // Sort by scheduled time, then by match ID to ensure stability

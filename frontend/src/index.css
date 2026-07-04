@@ -1,6 +1,10 @@
 @import 'flag-icons/css/flag-icons.min.css';
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
+.fi {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
 :root {
   --bg-primary: #ffffff;
   --bg-secondary: #f3f4f6;

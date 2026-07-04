@@ -224,7 +224,7 @@ export function RosterPage() {
               const player = players.find(p => p.id === id);
               if (!player) return null;
               const gameTag = isMultiGame ? (GAME_TAGS[player.game] || player.game) : '';
-              const displayRole = gameTag ? `[${gameTag}] ${player.role}` : player.role;
+              const displayRole = player.role ? (gameTag ? `[${gameTag}] ${player.role}` : player.role) : (gameTag ? `[${gameTag}]` : '');
               const avatarUrl = player.imageUrl || player.team?.imageUrl || '';
               return (
                 <div 
@@ -283,9 +283,11 @@ export function RosterPage() {
                     )}
                     <span>{player.team?.acronym || player.team?.name || ''}</span>
                   </div>
-                  <span className="badge badge-info" style={{ fontSize: '0.75rem', marginTop: '16px', padding: '6px 12px' }}>
-                    {displayRole}
-                  </span>
+                  {displayRole && (
+                    <span className="badge badge-info" style={{ fontSize: '0.75rem', marginTop: '16px', padding: '6px 12px' }}>
+                      {displayRole}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -384,9 +386,9 @@ export function RosterPage() {
                             </div>
                             {isCooldown ? (
                               <span className="badge badge-warning" style={{ background: '#f59e0b20', color: '#d97706', border: '1px solid #d9770630' }}>🔒 Récupération</span>
-                            ) : (
+                            ) : displayRole ? (
                               <span className="badge badge-info">{displayRole}</span>
-                            )}
+                            ) : null}
                             {isSelected && <span className="player-check">✓</span>}
                           </div>
                         );
@@ -410,20 +412,20 @@ export function RosterPage() {
                 const player = players.find((p) => p.id === id);
                 if (!player) return null;
                 const gameTag = isMultiGame ? (GAME_TAGS[player.game] || player.game) : '';
-                const displayRole = gameTag ? `[${gameTag}] ${player.role}` : player.role;
+                const displayRole = player.role ? (gameTag ? `[${gameTag}] ${player.role}` : player.role) : (gameTag ? `[${gameTag}]` : '');
                 return (
                   <div key={id} className="selected-player" id={`roster-selected-player-${id}`}>
                     {player.team?.imageUrl && (
-                      <img 
-                        src={player.team.imageUrl} 
-                        alt={player.team.name} 
-                        style={{ width: '28px', height: '28px', objectFit: 'contain', marginRight: '8px' }} 
+                      <img
+                        src={player.team.imageUrl}
+                        alt={player.team.name}
+                        style={{ width: '28px', height: '28px', objectFit: 'contain', marginRight: '8px' }}
                       />
                     )}
                     <div className="selected-info">
                       <span className="selected-name">{player.name}</span>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        <span>{player.team?.acronym || player.team?.name || ''} · {displayRole}</span>
+                        <span>{[player.team?.acronym || player.team?.name, displayRole].filter(Boolean).join(' · ')}</span>
                       </div>
                     </div>
                     <button className="btn btn-ghost btn-sm" id={`roster-btn-remove-${id}`} onClick={(e) => { e.stopPropagation(); togglePlayer(id); }}>✕</button>

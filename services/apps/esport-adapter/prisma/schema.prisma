@@ -1,0 +1,120 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // on réutilisera la même URL, mais les tables sont préfixées par esport_ ou dans un schéma dédié
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-esport"
+}
+
+enum Game {
+  LEAGUE_OF_LEGENDS
+  COUNTER_STRIKE
+  ROCKET_LEAGUE
+  VALORANT
+}
+
+enum EsportMatchDayStatus {
+  OPEN
+  LOCKED
+  SCORED
+}
+
+model EsportTeam {
+  id        String   @id // Pandascore ID (e.g., team_1234)
+  name      String
+  acronym   String?
+  imageUrl  String?  @map("image_url")
+  location  String?  // ISO country code, used for the flag icon on match detail
+  game      Game
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  players        EsportPlayer[]
+  matchesAsTeamA EsportMatch[] @relation("MatchTeamA")
+  matchesAsTeamB EsportMatch[] @relation("MatchTeamB")
+  matchesWon     EsportMatch[] @relation("MatchWinner")
+
+  @@map("esport_teams")
+}
+
+model EsportPlayer {
+  id           String   @id // Pandascore ID (e.g., player_5678)
+  name         String
+  esportTeamId String?  @map("esport_team_id")
+  game         Game
+  role         String
+  imageUrl     String?  @map("image_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  nationality  String?  // ISO country code, used for the flag icon on match detail
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  team         EsportTeam? @relation(fields: [esportTeamId], references: [id], onDelete: SetNull)
+  performances EsportPlayerMatchDayPerformance[]
+
+  @@map("esport_players")
+}
+
+model EsportMatchDay {
+  id        String               @id @default(cuid())
+  date      DateTime             @db.Date
+  game      Game
+  lockTime  DateTime             @map("lock_time")
+  status    EsportMatchDayStatus @default(OPEN)
+  createdAt DateTime             @default(now()) @map("created_at")
+  updatedAt DateTime             @updatedAt @map("updated_at")
+
+  matches      EsportMatch[]
+  performances EsportPlayerMatchDayPerformance[]
+
+  @@map("esport_match_days")
+}
+
+model EsportMatch {
+  id               String         @id // Pandascore ID (e.g., match_999)
+  esportMatchDayId String         @map("esport_match_day_id")
+  name             String
+  status           String         // "not_started", "running", "finished"
+  scheduledAt      DateTime       @map("scheduled_at") // Pandascore's planned start time
+  beginAt          DateTime?      @map("begin_at") // actual start once running
+  endAt            DateTime?      @map("end_at")
+  game             Game
+  teamAId          String?        @map("team_a_id")
+  teamBId          String?        @map("team_b_id")
+  winnerId         String?        @map("winner_id")
+  teamAScore       Int?           @map("team_a_score")
+  teamBScore       Int?           @map("team_b_score")
+  tournamentName   String?        @map("tournament_name")
+  streamUrl        String?        @map("stream_url")
+  matchType        String?        @map("match_type") // "best_of" | "first_to"
+  numberOfGames    Int?           @map("number_of_games")
+  games            Json?          // per-round/per-map stats — raw Pandascore shape until enriched, then real map/score data
+  gamesEnrichedAt  DateTime?      @map("games_enriched_at") // set once `games` holds real per-map data (live poll or finished-stats ingestion) — guards it from being clobbered back to Pandascore's raw shape
+  statsFetchedAt   DateTime?      @map("stats_fetched_at") // internal idempotency flag for the stats-ingestion cron
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
+  teamA    EsportTeam?    @relation("MatchTeamA", fields: [teamAId], references: [id])
+  teamB    EsportTeam?    @relation("MatchTeamB", fields: [teamBId], references: [id])
+  winner   EsportTeam?    @relation("MatchWinner", fields: [winnerId], references: [id])
+
+  @@map("esport_matches")
+}
+
+model EsportPlayerMatchDayPerformance {
+  id               String   @id @default(cuid())
+  esportPlayerId   String   @map("esport_player_id")
+  esportMatchDayId String   @map("esport_match_day_id")
+  rawStats         Json     @map("raw_stats")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  player   EsportPlayer   @relation(fields: [esportPlayerId], references: [id], onDelete: Cascade)
+  matchDay EsportMatchDay @relation(fields: [esportMatchDayId], references: [id], onDelete: Cascade)
+
+  @@unique([esportPlayerId, esportMatchDayId])
+  @@map("esport_player_match_day_performances")
+}
