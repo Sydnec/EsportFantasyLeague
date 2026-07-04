@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Game } from '@prisma/client-backend';
+import { Game, EsportMatchDayStatus } from '@prisma/client-backend';
 import { PrismaService } from '../prisma/prisma.service';
 import { EsportPlayerUpsertedDto } from '@app/shared/rabbitmq/dtos/esport.player.upserted.dto';
+import { EsportTeamUpsertedDto } from '@app/shared/rabbitmq/dtos/esport.team.upserted.dto';
+import { EsportMatchDayUpsertedDto } from '@app/shared/rabbitmq/dtos/esport.matchday.upserted.dto';
 import { ScoringPointsCalculatedDto } from '@app/shared/rabbitmq/dtos/scoring.points.calculated.dto';
 
 @Injectable()
@@ -35,6 +37,57 @@ export class ConsumersService {
         role: payload.role,
         imageUrl: payload.imageUrl,
         isActive: payload.isActive,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async handleEsportTeamUpserted(payload: EsportTeamUpsertedDto) {
+    this.logger.log(`Received esport.team.upserted for ${payload.id}`);
+
+    const game = payload.game as Game;
+
+    await this.prisma.esportTeamCache.upsert({
+      where: { id: payload.id },
+      update: {
+        name: payload.name,
+        acronym: payload.acronym,
+        imageUrl: payload.imageUrl,
+        game,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: payload.id,
+        name: payload.name,
+        acronym: payload.acronym,
+        imageUrl: payload.imageUrl,
+        game,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async handleEsportMatchDayUpserted(payload: EsportMatchDayUpsertedDto) {
+    this.logger.log(`Received esport.matchday.upserted for ${payload.id}`);
+
+    const game = payload.game as Game;
+    const status = payload.status as EsportMatchDayStatus;
+
+    await this.prisma.esportMatchDayCache.upsert({
+      where: { id: payload.id },
+      update: {
+        date: new Date(payload.date),
+        game,
+        lockTime: new Date(payload.lockTime),
+        status,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: payload.id,
+        date: new Date(payload.date),
+        game,
+        lockTime: new Date(payload.lockTime),
+        status,
         updatedAt: new Date(),
       },
     });
