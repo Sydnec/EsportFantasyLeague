@@ -47,7 +47,9 @@ export class LeaguesService {
       },
       include: {
         members: {
-          select: { userId: true },
+          include: {
+            user: { select: { id: true, username: true, avatarUrl: true } },
+          },
         },
       },
     });
