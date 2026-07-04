@@ -99,7 +99,7 @@ export function ResultsPage() {
               ...p,
               proPlayer: {
                 ...p.proPlayer,
-                role: `${gamePrefix}${p.proPlayer.role}`
+                role: p.proPlayer.role ? `${gamePrefix}${p.proPlayer.role}` : gamePrefix.trim(),
               }
             }));
             entry.picks.push(...mappedPicks);
@@ -216,7 +216,7 @@ export function ResultsPage() {
                     <span className="result-pick-name" style={{ fontWeight: 600 }}>{pick.proPlayer.name}</span>
                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                       <span className="result-pick-team text-secondary" style={{ fontSize: '0.9rem' }}>
-                        {(pick.proPlayer.team?.acronym || pick.proPlayer.team?.name || '')} · {pick.proPlayer.role}
+                        {[pick.proPlayer.team?.acronym || pick.proPlayer.team?.name, pick.proPlayer.role].filter(Boolean).join(' · ')}
                       </span>
                       <span className="result-pick-score font-bold">
                         {score !== undefined && score !== null
@@ -265,7 +265,7 @@ export function ResultsPage() {
                   {roster.picks.map((pick: any) => (
                     <div key={pick.id} className="result-pick" id={`results-pick-${pick.id}`}>
                       <span className="result-pick-name">{pick.proPlayer.name}</span>
-                      <span className="result-pick-team">{(pick.proPlayer.team?.acronym || pick.proPlayer.team?.name || '')} · {pick.proPlayer.role}</span>
+                      <span className="result-pick-team">{[pick.proPlayer.team?.acronym || pick.proPlayer.team?.name, pick.proPlayer.role].filter(Boolean).join(' · ')}</span>
                     </div>
                   ))}
                 </div>
@@ -330,7 +330,9 @@ export function ResultsPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                             <div className="player-info" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               <span className="player-name" style={{ fontWeight: 600 }}>{player.name}</span>
-                              <span className="badge badge-info" style={{ width: 'fit-content', marginTop: '4px' }}>{displayRole}</span>
+                              {displayRole && (
+                                <span className="badge badge-info" style={{ width: 'fit-content', marginTop: '4px' }}>{displayRole}</span>
+                              )}
                             </div>
                           </div>
                           <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: score !== null && score !== undefined ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
