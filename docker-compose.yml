@@ -42,8 +42,8 @@ services:
   # ──────────────────────────────────────────────
   gateway:
     build:
-      context: ./services/apps/gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/apps/gateway/Dockerfile
     ports:
       - "3000:3000"
     env_file:
@@ -58,8 +58,8 @@ services:
 
   backend:
     build:
-      context: ./services/apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/apps/backend/Dockerfile
     env_file:
       - ./services/apps/backend/.env
     depends_on:
@@ -72,8 +72,8 @@ services:
 
   esport-adapter:
     build:
-      context: ./services/apps/esport-adapter
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/apps/esport-adapter/Dockerfile
     env_file:
       - ./services/apps/esport-adapter/.env
     depends_on:
@@ -86,8 +86,8 @@ services:
 
   scoring:
     build:
-      context: ./services/apps/scoring
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/apps/scoring/Dockerfile
     env_file:
       - ./services/apps/scoring/.env
     depends_on:

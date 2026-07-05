@@ -21,8 +21,8 @@ jobs:
       - name: Prepare environment files
         run: |
           # 1. Config Backend Service (Inclut la config db & rabbitmq lue par les conteneurs d'infra)
-          mkdir -p services/backend
-          cat > services/backend/.env <<'EOF'
+          mkdir -p services/apps/backend
+          cat > services/apps/backend/.env <<'EOF'
           PORT=3001
           DATABASE_URL=postgresql://${{ secrets.ESFL_DB_USER }}:${{ secrets.ESFL_DB_PASSWORD }}@db:5432/${{ secrets.ESFL_DB_NAME }}?schema=backend_db
           POSTGRES_USER=${{ secrets.ESFL_DB_USER }}
@@ -39,8 +39,8 @@ jobs:
           EOF
 
           # 2. Config Esport Adapter Service
-          mkdir -p services/esport-adapter
-          cat > services/esport-adapter/.env <<'EOF'
+          mkdir -p services/apps/esport-adapter
+          cat > services/apps/esport-adapter/.env <<'EOF'
           PORT=3002
           DATABASE_URL=postgresql://${{ secrets.ESFL_DB_USER }}:${{ secrets.ESFL_DB_PASSWORD }}@db:5432/${{ secrets.ESFL_DB_NAME }}?schema=esport_db
           RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672
@@ -48,17 +48,21 @@ jobs:
           EOF
 
           # 3. Config Scoring Service
-          mkdir -p services/scoring
-          cat > services/scoring/.env <<'EOF'
+          mkdir -p services/apps/scoring
+          cat > services/apps/scoring/.env <<'EOF'
           RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672
           EOF
 
           # 4. Config API Gateway
-          mkdir -p services/gateway
-          cat > services/gateway/.env <<'EOF'
+          mkdir -p services/apps/gateway
+          cat > services/apps/gateway/.env <<'EOF'
           PORT=3000
           BACKEND_SERVICE_URL=http://backend:3001
           ESPORT_SERVICE_URL=http://esport-adapter:3002
+          FRONTEND_URL=${{ secrets.BACKEND_FRONTEND_URL }}
+          # Doit être IDENTIQUE au JWT_SECRET du Backend Service : le gateway ne fait que
+          # vérifier les tokens signés par le backend, avec la même clé.
+          JWT_SECRET=${{ secrets.BACKEND_JWT_SECRET }}
           EOF
 
       - name: Deploy with Docker Compose

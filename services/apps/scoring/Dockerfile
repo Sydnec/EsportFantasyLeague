@@ -2,16 +2,18 @@
 FROM node:22-alpine AS builder
 WORKDIR /usr/src/app
 COPY package*.json ./
+COPY services/package*.json ./services/
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN cd services && npx nest build scoring
 
 # Etape 2 : Production Run
 FROM node:22-alpine AS runner
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
 COPY package*.json ./
+COPY services/package*.json ./services/
 RUN npm ci --only=production
-COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/services/dist ./dist
 
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/apps/scoring/apps/scoring/src/main.js"]

@@ -25,7 +25,7 @@ export class GatewayModule implements NestModule {
     // proxied request loses its prefix downstream and 404s. `req.originalUrl` still
     // holds the untouched, full inbound path, so use that as the forwarded path.
     const backendProxy = createProxyMiddleware({
-      target: 'http://localhost:3001',
+      target: process.env.BACKEND_SERVICE_URL || 'http://localhost:3001',
       changeOrigin: true,
       pathRewrite: (_path, req: Request) => req.originalUrl,
     });
@@ -41,7 +41,7 @@ export class GatewayModule implements NestModule {
 
     // 3. Configurer le proxy pour l'Esport Adapter Service (port 3002)
     const esportProxy = createProxyMiddleware({
-      target: 'http://localhost:3002',
+      target: process.env.ESPORT_SERVICE_URL || 'http://localhost:3002',
       changeOrigin: true,
       pathRewrite: (_path, req: Request) => req.originalUrl,
     });

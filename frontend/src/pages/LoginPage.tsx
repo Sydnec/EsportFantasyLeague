@@ -2,8 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuthStore } from '../stores/auth.store';
-import { API_BASE_URL } from '../api/client';
 import './LoginPage.css';
+
+function redirectToGoogle() {
+  const params = new URLSearchParams({
+    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+    redirect_uri: `${window.location.origin}/auth/callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    prompt: 'select_account',
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
 
 export function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
@@ -123,7 +133,7 @@ export function LoginPage() {
             type="button"
             className="btn btn-secondary btn-lg w-full google-btn"
             id="login-google-btn"
-            onClick={() => window.location.href = `${API_BASE_URL.replace(/\/$/, '')}/auth/google`}
+            onClick={redirectToGoogle}
           >
             <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">

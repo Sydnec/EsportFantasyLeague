@@ -20,8 +20,7 @@ export class AuthService {
     this.googleClient = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_CALLBACK_URL ||
-        'http://localhost:3000/api/v1/auth/google/callback', // the user asked for the callback URL, this is the one
+      process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5173/auth/callback',
     );
   }
 
